@@ -299,7 +299,7 @@ mod tests {
     use crate::StateProviderDb;
 
     fn new_sierra_class() -> (FlattenedSierraClass, CompiledClass) {
-        let json = include_str!("../../../../primitives/contracts/compiled/cairo1_contract.json");
+        let json = include_str!("../../../../contracts/compiled/cairo1_contract.json");
         let artifact = serde_json::from_str(json).unwrap();
         let compiled_class = parse_compiled_class(artifact).unwrap();
         let sierra_class = parse_sierra_class(json).unwrap().flatten().unwrap();
@@ -553,9 +553,10 @@ mod tests {
             ClassHash::default(),
             "class hash of nonexistant contract should default to zero"
         );
-        assert!(
-            actual_compiled_hash.unwrap_err().to_string().contains("No compiled class hash found")
-        );
+        assert!(actual_compiled_hash
+            .unwrap_err()
+            .to_string()
+            .contains("No compiled class hash found"));
         assert!(actual_compiled_class.unwrap_err().to_string().contains("No compiled class found"));
 
         let sp: Box<dyn StateProvider> = Box::new(cached_state);

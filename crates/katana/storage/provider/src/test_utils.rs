@@ -41,5 +41,6 @@ fn initialize_test_provider<P: BlockWriter>(provider: &P) {
 fn create_genesis_for_testing() -> Genesis {
     // TODO(kariy): using a genesis builer here would be much nicer
     let mut genesis = Genesis::default();
+    // genesis.classes.insert(, v)
     genesis
 }

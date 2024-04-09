@@ -116,12 +116,13 @@ pub mod test_utils {
     use super::{DbEnv, DbEnvKind};
 
     const ERROR_DB_CREATION: &str = "Not able to create the mdbx file.";
+    const ERROR_TEMPDIR_CREATION: &str = "Failed to create temp dir.";
 
     /// Create database for testing
     pub fn create_test_db(kind: DbEnvKind) -> DbEnv {
         create_test_db_with_path(
             kind,
-            &tempfile::TempDir::new().expect("Failed to create temp dir.").into_path(),
+            &tempfile::TempDir::new().expect(ERROR_TEMPDIR_CREATION).into_path(),
         )
     }
 

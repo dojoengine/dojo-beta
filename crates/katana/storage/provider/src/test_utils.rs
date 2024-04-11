@@ -3,8 +3,9 @@ use crate::{providers::in_memory::InMemoryProvider, traits::block::BlockWriter};
 
 use katana_db::mdbx::{test_utils, DbEnvKind};
 use katana_primitives::block::{BlockHash, FinalityStatus};
-use katana_primitives::genesis::Genesis;
+use katana_primitives::genesis::{Genesis, GenesisBuilder};
 
+const GENESIS_BUILD_ERROR: &str = "Failed to build genesis block.";
 const GENESIS_INIT_ERROR: &str =
     "Failed to initialize test provider with genesis block and states.";
 
@@ -39,8 +40,6 @@ fn initialize_test_provider<P: BlockWriter>(provider: &P) {
 
 /// Creates a genesis config specifically for testing purposes.
 fn create_genesis_for_testing() -> Genesis {
-    // TODO(kariy): using a genesis builer here would be much nicer
-    let mut genesis = Genesis::default();
-    // genesis.classes.insert(, v)
-    genesis
+    // TODO(kariy): add test account here
+    GenesisBuilder::from(Genesis::default()).build().expect(GENESIS_BUILD_ERROR)
 }

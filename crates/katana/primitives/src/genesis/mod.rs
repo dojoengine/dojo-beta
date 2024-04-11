@@ -1,7 +1,9 @@
 pub mod allocation;
-pub mod builder;
+mod builder;
 pub mod constant;
 pub mod json;
+
+pub use builder::{Builder as GenesisBuilder, GenesisBuilderError};
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt::Debug;

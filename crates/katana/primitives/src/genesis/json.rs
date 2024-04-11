@@ -276,42 +276,7 @@ impl TryFrom<GenesisJson> for Genesis {
                     }
                 };
 
-                let sierra = serde_json::from_value::<SierraClass>(artifact.clone());
-
-                let (class_hash, compiled_class_hash, sierra, casm) = match sierra {
-                    Ok(sierra) => {
-                        let class = parse_compiled_class_v1(artifact)?;
-
-                        // check if the class hash is provided, otherwise compute it from the
-                        // artifacts
-                        let class_hash = class_hash.unwrap_or(sierra.class_hash()?);
-                        let compiled_hash = class.casm.compiled_class_hash().to_be_bytes();
-
-                        (
-                            class_hash,
-                            FieldElement::from_bytes_be(&compiled_hash)?,
-                            Some(Arc::new(sierra.flatten()?)),
-                            Arc::new(CompiledClass::Class(class)),
-                        )
-                    }
-
-                    // if the artifact is not a sierra contract, we check if it's a legacy contract
-                    Err(_) => {
-                        let casm = parse_deprecated_compiled_class(artifact.clone())?;
-
-                        let class_hash = if let Some(class_hash) = class_hash {
-                            class_hash
-                        } else {
-                            let casm: LegacyContractClass =
-                                serde_json::from_value(artifact.clone())?;
-                            casm.class_hash()?
-                        };
-
-                        (class_hash, class_hash, None, Arc::new(CompiledClass::Deprecated(casm)))
-                    }
-                };
-
-                Ok((class_hash, GenesisClass { compiled_class_hash, sierra, casm }))
+                parse_genesis_class_artifacts(class_hash, artifact)
             })
             .collect::<Result<_, GenesisJsonError>>()?;
 
@@ -542,6 +507,53 @@ fn class_artifact_at_path(
     let content: Value = serde_json::from_reader(BufReader::new(file))?;
 
     Ok(content)
+}
+
+pub(super) fn parse_genesis_class_artifacts(
+    class_hash: Option<ClassHash>,
+    artifact: Value,
+) -> Result<(ClassHash, GenesisClass), GenesisJsonError> {
+    let sierra = serde_json::from_value::<SierraClass>(artifact.clone());
+    match sierra {
+        Ok(sierra) => {
+            let class = parse_compiled_class_v1(artifact)?;
+
+            // check if the class hash is provided, otherwise compute it from the
+            // artifacts
+            let class_hash = class_hash.unwrap_or(sierra.class_hash()?);
+            let compiled_hash = class.casm.compiled_class_hash().to_be_bytes();
+
+            Ok((
+                class_hash,
+                GenesisClass {
+                    sierra: Some(Arc::new(sierra.flatten()?)),
+                    casm: Arc::new(CompiledClass::Class(class)),
+                    compiled_class_hash: FieldElement::from_bytes_be(&compiled_hash)?,
+                },
+            ))
+        }
+
+        // if the artifact is not a sierra contract, we check if it's a legacy contract
+        Err(_) => {
+            let casm = parse_deprecated_compiled_class(artifact.clone())?;
+
+            let class_hash = if let Some(class_hash) = class_hash {
+                class_hash
+            } else {
+                let casm: LegacyContractClass = serde_json::from_value(artifact.clone())?;
+                casm.class_hash()?
+            };
+
+            Ok((
+                class_hash,
+                GenesisClass {
+                    sierra: None,
+                    compiled_class_hash: class_hash,
+                    casm: Arc::new(CompiledClass::Deprecated(casm)),
+                },
+            ))
+        }
+    }
 }
 
 #[cfg(test)]

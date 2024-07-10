@@ -246,11 +246,7 @@ impl<Tx: DbTx> StateRootProvider for DbProvider<Tx> {
     }
 }
 
-impl<Tx> StateUpdateProvider for DbProvider<Tx>
-where
-    Tx: DbTx,
-    DbTx::Cursor: DbDupSortCursor,
-{
+impl<Tx: DbTx> StateUpdateProvider for DbProvider<Tx> {
     fn state_update(&self, block_id: BlockHashOrNumber) -> ProviderResult<Option<StateUpdates>> {
         // A helper function that iterates over all entries in a dupsort table and collects the
         // results into `V`. If `key` is not found, `V::default()` is returned.

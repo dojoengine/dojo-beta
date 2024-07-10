@@ -4,7 +4,7 @@ use crate::error::DatabaseError;
 use crate::tables::{DupSort, Table};
 
 /// Trait for read-only transaction type.
-pub trait DbTx {
+pub trait DbTx: Send + Sync {
     /// The cursor type.
     type Cursor<T: Table>: DbCursor<T>;
 

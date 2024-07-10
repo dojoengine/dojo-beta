@@ -4,7 +4,10 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::{Range, RangeInclusive};
 
-use katana_db::abstraction::{Database, DbCursor, DbCursorMut, DbDupSortCursor, DbTx, DbTxMut};
+use katana_db::abstraction::{
+    self, Database, DbCursor, DbCursor, DbCursorMut, DbCursorMut, DbDupSortCursor, DbDupSortCursor,
+    DbTx, DbTx, DbTxMut, DbTxMut,
+};
 use katana_db::error::DatabaseError;
 use katana_db::mdbx::DbEnv;
 use katana_db::models::block::StoredBlockBodyIndices;
@@ -47,16 +50,16 @@ use crate::ProviderResult;
 /// A provider implementation that uses a persistent database as the backend.
 // TODO: remove the default generic type
 #[derive(Debug)]
-pub struct DbProvider<Db: Database = DbEnv>(Db);
+pub struct DbProvider<Tx: DbTx>(Tx);
 
-impl<Db: Database> DbProvider<Db> {
+impl<Tx: DbTx> DbProvider<Tx> {
     /// Creates a new [`DbProvider`] from the given [`DbEnv`].
-    pub fn new(db: Db) -> Self {
-        Self(db)
+    pub fn new(tx: Tx) -> Self {
+        Self(tx)
     }
 }
 
-impl<Db: Database> StateFactoryProvider for DbProvider<Db> {
+impl<Tx: DbTx> StateFactoryProvider for DbProvider<Tx> {
     fn latest(&self) -> ProviderResult<Box<dyn StateProvider>> {
         Ok(Box::new(self::state::LatestStateProvider::new(self.0.tx()?)))
     }
@@ -85,43 +88,34 @@ impl<Db: Database> StateFactoryProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> BlockNumberProvider for DbProvider<Db> {
+impl<Tx: DbTx> BlockNumberProvider for DbProvider<Tx> {
     fn block_number_by_hash(&self, hash: BlockHash) -> ProviderResult<Option<BlockNumber>> {
-        let db_tx = self.0.tx()?;
-        let block_num = db_tx.get::<tables::BlockNumbers>(hash)?;
-        db_tx.commit()?;
-        Ok(block_num)
+        Ok(self.0.get::<tables::BlockNumbers>(hash)?)
     }
 
     fn latest_number(&self) -> ProviderResult<BlockNumber> {
-        let db_tx = self.0.tx()?;
-        let res = db_tx.cursor::<tables::BlockHashes>()?.last()?.map(|(num, _)| num);
+        let res = self.0.cursor::<tables::BlockHashes>()?.last()?.map(|(num, _)| num);
         let total_blocks = res.ok_or(ProviderError::MissingLatestBlockNumber)?;
-        db_tx.commit()?;
         Ok(total_blocks)
     }
 }
 
-impl<Db: Database> BlockHashProvider for DbProvider<Db> {
+impl<Tx: DbTx> BlockHashProvider for DbProvider<Tx> {
     fn latest_hash(&self) -> ProviderResult<BlockHash> {
         let latest_block = self.latest_number()?;
-        let db_tx = self.0.tx()?;
-        let latest_hash = db_tx.get::<tables::BlockHashes>(latest_block)?;
-        db_tx.commit()?;
-        latest_hash.ok_or(ProviderError::MissingLatestBlockHash)
+        let res = self.0.get::<tables::BlockHashes>(latest_block)?;
+        res.ok_or(ProviderError::MissingLatestBlockHash)
     }
 
     fn block_hash_by_num(&self, num: BlockNumber) -> ProviderResult<Option<BlockHash>> {
-        let db_tx = self.0.tx()?;
-        let block_hash = db_tx.get::<tables::BlockHashes>(num)?;
-        db_tx.commit()?;
+        let block_hash = self.0.get::<tables::BlockHashes>(num)?;
         Ok(block_hash)
     }
 }
 
-impl<Db: Database> HeaderProvider for DbProvider<Db> {
+impl<Tx: DbTx> HeaderProvider for DbProvider<Tx> {
     fn header(&self, id: BlockHashOrNumber) -> ProviderResult<Option<Header>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let num = match id {
             BlockHashOrNumber::Num(num) => Some(num),
@@ -131,7 +125,6 @@ impl<Db: Database> HeaderProvider for DbProvider<Db> {
         if let Some(num) = num {
             let header =
                 db_tx.get::<tables::Headers>(num)?.ok_or(ProviderError::MissingBlockHeader(num))?;
-            db_tx.commit()?;
             Ok(Some(header))
         } else {
             Ok(None)
@@ -139,12 +132,12 @@ impl<Db: Database> HeaderProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> BlockProvider for DbProvider<Db> {
+impl<Tx: DbTx> BlockProvider for DbProvider<Tx> {
     fn block_body_indices(
         &self,
         id: BlockHashOrNumber,
     ) -> ProviderResult<Option<StoredBlockBodyIndices>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let block_num = match id {
             BlockHashOrNumber::Num(num) => Some(num),
@@ -153,7 +146,6 @@ impl<Db: Database> BlockProvider for DbProvider<Db> {
 
         if let Some(num) = block_num {
             let indices = db_tx.get::<tables::BlockBodyIndices>(num)?;
-            db_tx.commit()?;
             Ok(indices)
         } else {
             Ok(None)
@@ -161,13 +153,9 @@ impl<Db: Database> BlockProvider for DbProvider<Db> {
     }
 
     fn block(&self, id: BlockHashOrNumber) -> ProviderResult<Option<Block>> {
-        let db_tx = self.0.tx()?;
-
         if let Some(header) = self.header(id)? {
             let res = self.transactions_by_block(id)?;
             let body = res.ok_or(ProviderError::MissingBlockTxs(header.number))?;
-
-            db_tx.commit()?;
             Ok(Some(Block { header, body }))
         } else {
             Ok(None)
@@ -178,7 +166,7 @@ impl<Db: Database> BlockProvider for DbProvider<Db> {
         &self,
         id: BlockHashOrNumber,
     ) -> ProviderResult<Option<BlockWithTxHashes>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let block_num = match id {
             BlockHashOrNumber::Num(num) => Some(num),
@@ -194,8 +182,6 @@ impl<Db: Database> BlockProvider for DbProvider<Db> {
             let body = self.transaction_hashes_in_range(Range::from(body_indices))?;
             let block = BlockWithTxHashes { header, body };
 
-            db_tx.commit()?;
-
             Ok(Some(block))
         } else {
             Ok(None)
@@ -203,7 +189,7 @@ impl<Db: Database> BlockProvider for DbProvider<Db> {
     }
 
     fn blocks_in_range(&self, range: RangeInclusive<u64>) -> ProviderResult<Vec<Block>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let total = range.end() - range.start() + 1;
         let mut blocks = Vec::with_capacity(total as usize);
@@ -218,14 +204,13 @@ impl<Db: Database> BlockProvider for DbProvider<Db> {
             }
         }
 
-        db_tx.commit()?;
         Ok(blocks)
     }
 }
 
-impl<Db: Database> BlockStatusProvider for DbProvider<Db> {
+impl<Tx: DbTx> BlockStatusProvider for DbProvider<Tx> {
     fn block_status(&self, id: BlockHashOrNumber) -> ProviderResult<Option<FinalityStatus>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let block_num = match id {
             BlockHashOrNumber::Num(num) => Some(num),
@@ -235,8 +220,6 @@ impl<Db: Database> BlockStatusProvider for DbProvider<Db> {
         if let Some(block_num) = block_num {
             let res = db_tx.get::<tables::BlockStatusses>(block_num)?;
             let status = res.ok_or(ProviderError::MissingBlockStatus(block_num))?;
-
-            db_tx.commit()?;
             Ok(Some(status))
         } else {
             Ok(None)
@@ -244,9 +227,9 @@ impl<Db: Database> BlockStatusProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> StateRootProvider for DbProvider<Db> {
+impl<Tx: DbTx> StateRootProvider for DbProvider<Tx> {
     fn state_root(&self, block_id: BlockHashOrNumber) -> ProviderResult<Option<FieldElement>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let block_num = match block_id {
             BlockHashOrNumber::Num(num) => Some(num),
@@ -263,17 +246,21 @@ impl<Db: Database> StateRootProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> StateUpdateProvider for DbProvider<Db> {
+impl<Tx> StateUpdateProvider for DbProvider<Tx>
+where
+    Tx: DbTx,
+    DbTx::Cursor: DbDupSortCursor,
+{
     fn state_update(&self, block_id: BlockHashOrNumber) -> ProviderResult<Option<StateUpdates>> {
         // A helper function that iterates over all entries in a dupsort table and collects the
         // results into `V`. If `key` is not found, `V::default()` is returned.
-        fn dup_entries<Db, Tb, V, T>(
-            db_tx: &<Db as Database>::Tx,
+        fn dup_entries<Tx, Tb, V, T>(
+            db_tx: &Tx,
             key: <Tb as Table>::Key,
             f: impl FnMut(Result<KeyValue<Tb>, DatabaseError>) -> ProviderResult<T>,
         ) -> ProviderResult<V>
         where
-            Db: Database,
+            Tx: DbTx,
             Tb: DupSort + Debug,
             V: FromIterator<T> + Default,
         {
@@ -285,7 +272,7 @@ impl<Db: Database> StateUpdateProvider for DbProvider<Db> {
                 .unwrap_or_default())
         }
 
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
         let block_num = self.block_number_by_id(block_id)?;
 
         if let Some(block_num) = block_num {
@@ -357,9 +344,9 @@ impl<Db: Database> StateUpdateProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> TransactionProvider for DbProvider<Db> {
+impl<Tx: DbTx> TransactionProvider for DbProvider<Tx> {
     fn transaction_by_hash(&self, hash: TxHash) -> ProviderResult<Option<TxWithHash>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         if let Some(num) = db_tx.get::<tables::TxNumbers>(hash)? {
             let res = db_tx.get::<tables::Transactions>(num)?;
@@ -385,7 +372,7 @@ impl<Db: Database> TransactionProvider for DbProvider<Db> {
     }
 
     fn transaction_in_range(&self, range: Range<TxNumber>) -> ProviderResult<Vec<TxWithHash>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let total = range.end - range.start;
         let mut transactions = Vec::with_capacity(total as usize);
@@ -407,7 +394,7 @@ impl<Db: Database> TransactionProvider for DbProvider<Db> {
         &self,
         hash: TxHash,
     ) -> ProviderResult<Option<(BlockNumber, BlockHash)>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
         if let Some(num) = db_tx.get::<tables::TxNumbers>(hash)? {
             let block_num =
                 db_tx.get::<tables::TxBlocks>(num)?.ok_or(ProviderError::MissingTxBlock(num))?;
@@ -427,7 +414,7 @@ impl<Db: Database> TransactionProvider for DbProvider<Db> {
         block_id: BlockHashOrNumber,
         idx: u64,
     ) -> ProviderResult<Option<TxWithHash>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         match self.block_body_indices(block_id)? {
             // make sure the requested idx is within the range of the block tx count
@@ -452,7 +439,7 @@ impl<Db: Database> TransactionProvider for DbProvider<Db> {
         &self,
         block_id: BlockHashOrNumber,
     ) -> ProviderResult<Option<u64>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
         if let Some(indices) = self.block_body_indices(block_id)? {
             db_tx.commit()?;
             Ok(Some(indices.tx_count))
@@ -462,9 +449,9 @@ impl<Db: Database> TransactionProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> TransactionsProviderExt for DbProvider<Db> {
+impl<Tx: DbTx> TransactionsProviderExt for DbProvider<Tx> {
     fn transaction_hashes_in_range(&self, range: Range<TxNumber>) -> ProviderResult<Vec<TxHash>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let total = range.end - range.start;
         let mut hashes = Vec::with_capacity(total as usize);
@@ -480,9 +467,9 @@ impl<Db: Database> TransactionsProviderExt for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> TransactionStatusProvider for DbProvider<Db> {
+impl<Tx: DbTx> TransactionStatusProvider for DbProvider<Tx> {
     fn transaction_status(&self, hash: TxHash) -> ProviderResult<Option<FinalityStatus>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
         if let Some(tx_num) = db_tx.get::<tables::TxNumbers>(hash)? {
             let res = db_tx.get::<tables::TxBlocks>(tx_num)?;
             let block_num = res.ok_or(ProviderError::MissingTxBlock(tx_num))?;
@@ -498,9 +485,9 @@ impl<Db: Database> TransactionStatusProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> TransactionTraceProvider for DbProvider<Db> {
+impl<Tx: DbTx> TransactionTraceProvider for DbProvider<Tx> {
     fn transaction_execution(&self, hash: TxHash) -> ProviderResult<Option<TxExecInfo>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
         if let Some(num) = db_tx.get::<tables::TxNumbers>(hash)? {
             let execution = db_tx
                 .get::<tables::TxTraces>(num)?
@@ -529,7 +516,7 @@ impl<Db: Database> TransactionTraceProvider for DbProvider<Db> {
         &self,
         range: Range<TxNumber>,
     ) -> ProviderResult<Vec<TxExecInfo>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
 
         let total = range.end - range.start;
         let mut traces = Vec::with_capacity(total as usize);
@@ -545,9 +532,9 @@ impl<Db: Database> TransactionTraceProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> ReceiptProvider for DbProvider<Db> {
+impl<Tx: DbTx> ReceiptProvider for DbProvider<Tx> {
     fn receipt_by_hash(&self, hash: TxHash) -> ProviderResult<Option<Receipt>> {
-        let db_tx = self.0.tx()?;
+        let db_tx = &self.0;
         if let Some(num) = db_tx.get::<tables::TxNumbers>(hash)? {
             let receipt =
                 db_tx.get::<tables::Receipts>(num)?.ok_or(ProviderError::MissingTxReceipt(num))?;
@@ -564,7 +551,7 @@ impl<Db: Database> ReceiptProvider for DbProvider<Db> {
         block_id: BlockHashOrNumber,
     ) -> ProviderResult<Option<Vec<Receipt>>> {
         if let Some(indices) = self.block_body_indices(block_id)? {
-            let db_tx = self.0.tx()?;
+            let db_tx = &self.0;
             let mut receipts = Vec::with_capacity(indices.tx_count as usize);
 
             let range = indices.tx_offset..indices.tx_offset + indices.tx_count;
@@ -582,7 +569,7 @@ impl<Db: Database> ReceiptProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> BlockEnvProvider for DbProvider<Db> {
+impl<Tx: DbTx> BlockEnvProvider for DbProvider<Tx> {
     fn block_env_at(&self, block_id: BlockHashOrNumber) -> ProviderResult<Option<BlockEnv>> {
         let Some(header) = self.header(block_id)? else { return Ok(None) };
 
@@ -595,7 +582,7 @@ impl<Db: Database> BlockEnvProvider for DbProvider<Db> {
     }
 }
 
-impl<Db: Database> BlockWriter for DbProvider<Db> {
+impl<Tx: DbTx> BlockWriter for DbProvider<Tx> {
     fn insert_block_with_states_and_receipts(
         &self,
         block: SealedBlockWithStatus,

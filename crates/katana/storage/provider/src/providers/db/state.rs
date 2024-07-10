@@ -17,17 +17,15 @@ use crate::traits::contract::{ContractClassProvider, ContractClassWriter};
 use crate::traits::state::{StateProvider, StateWriter};
 use crate::ProviderResult;
 
-impl<Db: Database> StateWriter for DbProvider<Db> {
+impl<Tx: DbTxMut> StateWriter for DbProvider<Tx> {
     fn set_nonce(&self, address: ContractAddress, nonce: Nonce) -> ProviderResult<()> {
-        self.0.update(move |db_tx| -> ProviderResult<()> {
-            let value = if let Some(info) = db_tx.get::<tables::ContractInfo>(address)? {
-                GenericContractInfo { nonce, ..info }
-            } else {
-                GenericContractInfo { nonce, ..Default::default() }
-            };
-            db_tx.put::<tables::ContractInfo>(address, value)?;
-            Ok(())
-        })?
+        let value = if let Some(info) = self.0.get::<tables::ContractInfo>(address)? {
+            GenericContractInfo { nonce, ..info }
+        } else {
+            GenericContractInfo { nonce, ..Default::default() }
+        };
+        self.0.put::<tables::ContractInfo>(address, value)?;
+        Ok(())
     }
 
     fn set_storage(
@@ -36,20 +34,18 @@ impl<Db: Database> StateWriter for DbProvider<Db> {
         storage_key: StorageKey,
         storage_value: StorageValue,
     ) -> ProviderResult<()> {
-        self.0.update(move |db_tx| -> ProviderResult<()> {
-            let mut cursor = db_tx.cursor_dup_mut::<tables::ContractStorage>()?;
-            let entry = cursor.seek_by_key_subkey(address, storage_key)?;
+        let mut cursor = self.0.cursor_dup_mut::<tables::ContractStorage>()?;
+        let entry = cursor.seek_by_key_subkey(address, storage_key)?;
 
-            match entry {
-                Some(entry) if entry.key == storage_key => {
-                    cursor.delete_current()?;
-                }
-                _ => {}
+        match entry {
+            Some(entry) if entry.key == storage_key => {
+                cursor.delete_current()?;
             }
+            _ => {}
+        }
 
-            cursor.upsert(address, StorageEntry { key: storage_key, value: storage_value })?;
-            Ok(())
-        })?
+        cursor.upsert(address, StorageEntry { key: storage_key, value: storage_value })?;
+        Ok(())
     }
 
     fn set_class_hash_of_contract(
@@ -57,24 +53,20 @@ impl<Db: Database> StateWriter for DbProvider<Db> {
         address: ContractAddress,
         class_hash: ClassHash,
     ) -> ProviderResult<()> {
-        self.0.update(move |db_tx| -> ProviderResult<()> {
-            let value = if let Some(info) = db_tx.get::<tables::ContractInfo>(address)? {
-                GenericContractInfo { class_hash, ..info }
-            } else {
-                GenericContractInfo { class_hash, ..Default::default() }
-            };
-            db_tx.put::<tables::ContractInfo>(address, value)?;
-            Ok(())
-        })?
+        let value = if let Some(info) = self.0.get::<tables::ContractInfo>(address)? {
+            GenericContractInfo { class_hash, ..info }
+        } else {
+            GenericContractInfo { class_hash, ..Default::default() }
+        };
+        self.0.put::<tables::ContractInfo>(address, value)?;
+        Ok(())
     }
 }
 
-impl ContractClassWriter for DbProvider {
+impl<Tx: DbTxMut> ContractClassWriter for DbProvider<Tx> {
     fn set_class(&self, hash: ClassHash, class: CompiledClass) -> ProviderResult<()> {
-        self.0.update(move |db_tx| -> ProviderResult<()> {
-            db_tx.put::<tables::CompiledClasses>(hash, class)?;
-            Ok(())
-        })?
+        self.0.put::<tables::CompiledClasses>(hash, class)?;
+        Ok(())
     }
 
     fn set_compiled_class_hash_of_class_hash(
@@ -82,10 +74,8 @@ impl ContractClassWriter for DbProvider {
         hash: ClassHash,
         compiled_hash: CompiledClassHash,
     ) -> ProviderResult<()> {
-        self.0.update(move |db_tx| -> ProviderResult<()> {
-            db_tx.put::<tables::CompiledClassHashes>(hash, compiled_hash)?;
-            Ok(())
-        })?
+        self.0.put::<tables::CompiledClassHashes>(hash, compiled_hash)?;
+        Ok(())
     }
 
     fn set_sierra_class(
@@ -93,10 +83,8 @@ impl ContractClassWriter for DbProvider {
         hash: ClassHash,
         sierra: FlattenedSierraClass,
     ) -> ProviderResult<()> {
-        self.0.update(move |db_tx| -> ProviderResult<()> {
-            db_tx.put::<tables::SierraClasses>(hash, sierra)?;
-            Ok(())
-        })?
+        self.0.put::<tables::SierraClasses>(hash, sierra)?;
+        Ok(())
     }
 }
 

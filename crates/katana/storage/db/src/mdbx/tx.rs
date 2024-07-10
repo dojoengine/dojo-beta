@@ -1,6 +1,7 @@
 //! Transaction wrapper for libmdbx-sys.
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use libmdbx::ffi::DBI;
 use libmdbx::{TransactionKind, WriteFlags, RW};
@@ -21,12 +22,12 @@ pub type TxRW = Tx<libmdbx::RW>;
 /// Database transaction.
 ///
 /// Wrapper for a `libmdbx` transaction.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Tx<K: TransactionKind> {
     /// Libmdbx-sys transaction.
     inner: libmdbx::Transaction<K>,
     /// Database table handle cache.
-    db_handles: RwLock<[Option<DBI>; NUM_TABLES]>,
+    db_handles: Arc<RwLock<[Option<DBI>; NUM_TABLES]>>,
 }
 
 impl<K: TransactionKind> Tx<K> {

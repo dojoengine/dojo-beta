@@ -31,7 +31,6 @@ use crate::utils::get_current_timestamp;
 
 pub(crate) const LOG_TARGET: &str = "katana::core::backend";
 
-#[derive(Debug)]
 pub struct Backend<EF: ExecutorFactory> {
     /// The config used to generate the backend.
     pub config: StarknetConfig,
@@ -137,7 +136,7 @@ impl<EF: ExecutorFactory> Backend<EF> {
             }
         }
 
-        let prev_hash = BlockHashProvider::latest_hash(self.blockchain.provider())?;
+        let prev_hash = self.blockchain.provider().unwrap().latest_hash()?;
         let block_number = block_env.number;
         let tx_count = txs.len();
 

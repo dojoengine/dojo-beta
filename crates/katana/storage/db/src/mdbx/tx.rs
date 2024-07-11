@@ -22,7 +22,7 @@ pub type TxRW = Tx<libmdbx::RW>;
 /// Database transaction.
 ///
 /// Wrapper for a `libmdbx` transaction.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Tx<K: TransactionKind> {
     /// Libmdbx-sys transaction.
     inner: libmdbx::Transaction<K>,
@@ -127,5 +127,11 @@ impl DbTxMut for Tx<RW> {
 
     fn clear<T: Table>(&self) -> Result<(), DatabaseError> {
         self.inner.clear_db(self.get_dbi::<T>()?).map_err(DatabaseError::Clear)
+    }
+}
+
+impl<K: TransactionKind> Clone for Tx<K> {
+    fn clone(&self) -> Self {
+        Tx { inner: self.inner.clone(), db_handles: Arc::clone(&self.db_handles) }
     }
 }

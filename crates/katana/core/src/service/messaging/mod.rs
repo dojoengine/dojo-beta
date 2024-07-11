@@ -72,6 +72,8 @@ pub enum Error {
     SendError,
     #[error(transparent)]
     Provider(ProviderError),
+    #[error(transparent)]
+    DbProvider(#[from] katana_provider::error::ProviderError),
 }
 
 #[derive(Debug, thiserror::Error)]

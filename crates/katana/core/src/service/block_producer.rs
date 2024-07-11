@@ -157,7 +157,7 @@ pub enum BlockProducerMode<EF: ExecutorFactory> {
     Instant(InstantBlockProducer<EF>),
 }
 
-#[derive(Debug, Clone, derive_more::Deref)]
+#[derive(Clone, derive_more::Deref)]
 pub struct PendingExecutor(#[deref] Arc<RwLock<Box<dyn BlockExecutor<'static>>>>);
 
 impl PendingExecutor {
@@ -486,7 +486,7 @@ impl<EF: ExecutorFactory> InstantBlockProducer<EF> {
     ) -> Result<(MinedBlockOutcome, Vec<TxWithOutcome>), BlockProductionError> {
         trace!(target: LOG_TARGET, "Creating new block.");
 
-        let provider = backend.blockchain.provider();
+        let provider = backend.blockchain.provider().expect("able to create provider");
 
         let latest_num = provider.latest_number()?;
         let mut block_env = provider.block_env_at(BlockHashOrNumber::Num(latest_num))?.unwrap();

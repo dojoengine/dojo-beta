@@ -23,13 +23,6 @@ pub fn test_in_memory_provider() -> InMemoryProvider {
     provider
 }
 
-/// Creates a persistent storage provider with initial states loaded for testin.
-pub fn test_db_provider() -> DbProvider {
-    let provider = DbProvider::new(test_utils::create_test_db(DbEnvKind::RW));
-    initialize_test_provider(&provider);
-    provider
-}
-
 /// Initializes the provider with a genesis block and states.
 fn initialize_test_provider<P: BlockWriter>(provider: &P) {
     let genesis = create_genesis_for_testing();

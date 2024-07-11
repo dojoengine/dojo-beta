@@ -118,12 +118,15 @@ impl<EF: ExecutorFactory> MessagingService<EF> {
         backend: Arc<Backend<EF>>,
         messenger: Arc<MessengerMode>,
     ) -> MessengerResult<Option<(u64, usize)>> {
-        let Some(messages) = ReceiptProvider::receipts_by_block(
-            backend.blockchain.provider(),
-            BlockHashOrNumber::Num(block_num),
-        )
-        .unwrap()
-        .map(|r| r.iter().flat_map(|r| r.messages_sent().to_vec()).collect::<Vec<MessageToL1>>()) else {
+        let Some(messages) = backend
+            .blockchain
+            .provider()?
+            .receipts_by_block(BlockHashOrNumber::Num(block_num))
+            .unwrap()
+            .map(|r| {
+                r.iter().flat_map(|r| r.messages_sent().to_vec()).collect::<Vec<MessageToL1>>()
+            })
+        else {
             return Ok(None);
         };
 
@@ -185,8 +188,8 @@ impl<EF: ExecutorFactory> Stream for MessagingService<EF> {
             }
 
             if pin.msg_send_fut.is_none() {
-                let local_latest_block_num =
-                    BlockNumberProvider::latest_number(pin.backend.blockchain.provider()).unwrap();
+                let provider = pin.backend.blockchain.provider().unwrap();
+                let local_latest_block_num = provider.latest_number().unwrap();
                 if pin.send_from_block <= local_latest_block_num {
                     pin.msg_send_fut = Some(Box::pin(Self::send_messages(
                         pin.send_from_block,

@@ -5,81 +5,34 @@ use katana_db::init_db;
 use katana_primitives::block::{BlockHash, FinalityStatus, SealedBlockWithStatus};
 use katana_primitives::genesis::Genesis;
 use katana_primitives::state::StateUpdatesWithDeclaredClasses;
-use katana_provider::providers::db::DbProvider;
-use katana_provider::traits::block::{BlockProvider, BlockWriter};
-use katana_provider::traits::contract::ContractClassWriter;
-use katana_provider::traits::env::BlockEnvProvider;
-use katana_provider::traits::state::{StateFactoryProvider, StateRootProvider, StateWriter};
-use katana_provider::traits::state_update::StateUpdateProvider;
-use katana_provider::traits::transaction::{
-    ReceiptProvider, TransactionProvider, TransactionStatusProvider, TransactionTraceProvider,
-    TransactionsProviderExt,
-};
-use katana_provider::BlockchainProvider;
+use katana_provider::providers::db::DbProviderFactory;
+use katana_provider::traits::block::{BlockHashProvider, BlockWriter};
+use katana_provider::traits::{Database, DatabaseMut, ProviderFactory};
+use katana_provider::{BlockchainProvider, ProviderResult};
 
-pub trait Database:
-    BlockProvider
-    + BlockWriter
-    + TransactionProvider
-    + TransactionStatusProvider
-    + TransactionTraceProvider
-    + TransactionsProviderExt
-    + ReceiptProvider
-    + StateUpdateProvider
-    + StateRootProvider
-    + StateWriter
-    + ContractClassWriter
-    + StateFactoryProvider
-    + BlockEnvProvider
-    + 'static
-    + Send
-    + Sync
-    + core::fmt::Debug
-{
-}
-
-impl<T> Database for T where
-    T: BlockProvider
-        + BlockWriter
-        + TransactionProvider
-        + TransactionStatusProvider
-        + TransactionTraceProvider
-        + TransactionsProviderExt
-        + ReceiptProvider
-        + StateUpdateProvider
-        + StateRootProvider
-        + StateWriter
-        + ContractClassWriter
-        + StateFactoryProvider
-        + BlockEnvProvider
-        + 'static
-        + Send
-        + Sync
-        + core::fmt::Debug
-{
-}
-
-#[derive(Debug)]
 pub struct Blockchain {
-    inner: BlockchainProvider<Box<dyn Database>>,
+    provider_factory: Box<dyn ProviderFactory>,
 }
 
 impl Blockchain {
-    pub fn new(provider: impl Database) -> Self {
-        Self { inner: BlockchainProvider::new(Box::new(provider)) }
+    pub fn new(provider_factory: impl ProviderFactory + 'static) -> Self {
+        Self { provider_factory: Box::new(provider_factory) }
     }
 
     /// Creates a new [Blockchain] with the given [Database] implementation and genesis state.
-    pub fn new_with_genesis(provider: impl Database, genesis: &Genesis) -> Result<Self> {
+    pub fn new_with_genesis(
+        provider_factory: impl ProviderFactory + 'static,
+        genesis: &Genesis,
+    ) -> Result<Self> {
         // check whether the genesis block has been initialized
-        let genesis_hash = provider.block_hash_by_num(genesis.number)?;
+        let genesis_hash = provider_factory.provider()?.block_hash_by_num(genesis.number)?;
 
         match genesis_hash {
             Some(db_hash) => {
                 let genesis_hash = genesis.block().header.compute_hash();
                 // check genesis should be the same
                 if db_hash == genesis_hash {
-                    Ok(Self::new(provider))
+                    Ok(Self::new(provider_factory))
                 } else {
                     Err(anyhow!(
                         "Genesis block hash mismatch: expected {genesis_hash:#x}, got {db_hash:#}",
@@ -92,7 +45,7 @@ impl Blockchain {
                 let block = SealedBlockWithStatus { block, status: FinalityStatus::AcceptedOnL1 };
                 let state_updates = genesis.state_updates();
 
-                Self::new_with_block_and_state(provider, block, state_updates)
+                Self::new_with_block_and_state(provider_factory, block, state_updates)
             }
         }
     }
@@ -100,39 +53,43 @@ impl Blockchain {
     /// Creates a new [Blockchain] from a database at `path` and `genesis` state.
     pub fn new_with_db(db_path: impl AsRef<Path>, genesis: &Genesis) -> Result<Self> {
         let db = init_db(db_path)?;
-        let provider = DbProvider::new(db);
+        let provider = DbProviderFactory::new(db);
         Self::new_with_genesis(provider, genesis)
     }
 
     /// Builds a new blockchain with a forked block.
     pub fn new_from_forked(
-        provider: impl Database,
+        provider_factory: impl ProviderFactory + 'static,
         genesis_hash: BlockHash,
         genesis: &Genesis,
         block_status: FinalityStatus,
     ) -> Result<Self> {
         let block = genesis.block().seal_with_hash_and_status(genesis_hash, block_status);
         let state_updates = genesis.state_updates();
-        Self::new_with_block_and_state(provider, block, state_updates)
+        Self::new_with_block_and_state(provider_factory, block, state_updates)
     }
 
-    pub fn provider(&self) -> &BlockchainProvider<Box<dyn Database>> {
-        &self.inner
+    pub fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Database>>> {
+        Ok(self.provider_factory.provider()?)
+    }
+
+    pub fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn DatabaseMut>>> {
+        Ok(self.provider_factory.provider_mut()?)
     }
 
     fn new_with_block_and_state(
-        provider: impl Database,
+        provider_factory: impl ProviderFactory + 'static,
         block: SealedBlockWithStatus,
         states: StateUpdatesWithDeclaredClasses,
     ) -> Result<Self> {
         BlockWriter::insert_block_with_states_and_receipts(
-            &provider,
+            &provider_factory.provider_mut()?,
             block,
             states,
             vec![],
             vec![],
         )?;
-        Ok(Self::new(provider))
+        Ok(Self::new(provider_factory))
     }
 }
 

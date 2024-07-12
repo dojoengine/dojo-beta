@@ -191,7 +191,7 @@ impl<EF: ExecutorFactory> IntervalBlockProducer<EF> {
             interval
         };
 
-        let provider = backend.blockchain.provider();
+        let provider = backend.blockchain.provider().expect("failed to get provider");
 
         let latest_num = provider.latest_number().unwrap();
         let mut block_env = provider.block_env_at(latest_num.into()).unwrap().unwrap();
@@ -219,7 +219,7 @@ impl<EF: ExecutorFactory> IntervalBlockProducer<EF> {
     /// for every fixed interval, although it will still execute all queued transactions and
     /// keep hold of the pending state.
     pub fn new_no_mining(backend: Arc<Backend<EF>>) -> Self {
-        let provider = backend.blockchain.provider();
+        let provider = backend.blockchain.provider().expect("failed to get provider");
 
         let latest_num = provider.latest_number().unwrap();
         let mut block_env = provider.block_env_at(latest_num.into()).unwrap().unwrap();
@@ -309,7 +309,7 @@ impl<EF: ExecutorFactory> IntervalBlockProducer<EF> {
 
     fn create_new_executor_for_next_block(&self) -> Result<PendingExecutor, BlockProductionError> {
         let backend = &self.backend;
-        let provider = backend.blockchain.provider();
+        let provider = backend.blockchain.provider().expect("failed to get provider");
 
         let latest_num = provider.latest_number()?;
         let updated_state = provider.latest()?;

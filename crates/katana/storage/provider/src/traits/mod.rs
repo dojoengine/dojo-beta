@@ -18,7 +18,7 @@ pub mod state_update;
 pub mod transaction;
 
 // TODO: placeholder traits, we should unify all provider/db (in-memory or on disk) implementations to be transactional
-pub trait Database:
+pub trait Provider:
     BlockProvider
     + ReceiptProvider
     + BlockEnvProvider
@@ -35,9 +35,9 @@ pub trait Database:
 {
 }
 
-pub trait DatabaseMut: Database + BlockWriter + StateWriter + ContractClassWriter {}
+pub trait ProviderMut: Provider + BlockWriter + StateWriter + ContractClassWriter {}
 
-impl<T> Database for T where
+impl<T> Provider for T where
     T: BlockProvider
         + ReceiptProvider
         + BlockEnvProvider
@@ -54,12 +54,12 @@ impl<T> Database for T where
 {
 }
 
-impl<T> DatabaseMut for T where T: Database + BlockWriter + StateWriter + ContractClassWriter {}
+impl<T> ProviderMut for T where T: Provider + BlockWriter + StateWriter + ContractClassWriter {}
 
 pub trait ProviderFactory: Send + Sync {
-    fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Database>>>;
+    fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Provider>>>;
 
-    fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn DatabaseMut>>> {
+    fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn ProviderMut>>> {
         todo!()
     }
 }

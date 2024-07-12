@@ -7,7 +7,7 @@ use katana_primitives::genesis::Genesis;
 use katana_primitives::state::StateUpdatesWithDeclaredClasses;
 use katana_provider::providers::db::DbProviderFactory;
 use katana_provider::traits::block::{BlockHashProvider, BlockWriter};
-use katana_provider::traits::{Database, DatabaseMut, ProviderFactory};
+use katana_provider::traits::{Provider, ProviderFactory, ProviderMut};
 use katana_provider::{BlockchainProvider, ProviderResult};
 
 pub struct Blockchain {
@@ -69,11 +69,11 @@ impl Blockchain {
         Self::new_with_block_and_state(provider_factory, block, state_updates)
     }
 
-    pub fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Database>>> {
+    pub fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Provider>>> {
         Ok(self.provider_factory.provider()?)
     }
 
-    pub fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn DatabaseMut>>> {
+    pub fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn ProviderMut>>> {
         Ok(self.provider_factory.provider_mut()?)
     }
 
@@ -128,9 +128,9 @@ mod tests {
 
         let blockchain = Blockchain::new_with_genesis(provider, &Genesis::default())
             .expect("failed to create blockchain from genesis block");
-        let state = blockchain.provider().latest().expect("failed to get latest state");
+        let state = provider.latest().expect("failed to get latest state");
 
-        let latest_number = blockchain.provider().latest_number().unwrap();
+        let latest_number = provider.latest_number().unwrap();
         let fee_token_class_hash =
             state.class_hash_of_contract(DEFAULT_FEE_TOKEN_ADDRESS).unwrap().unwrap();
         let udc_class_hash = state.class_hash_of_contract(DEFAULT_UDC_ADDRESS).unwrap().unwrap();
@@ -163,11 +163,10 @@ mod tests {
         )
         .expect("failed to create fork blockchain");
 
-        let latest_number = blockchain.provider().latest_number().unwrap();
-        let latest_hash = blockchain.provider().latest_hash().unwrap();
-        let header = blockchain.provider().header(latest_number.into()).unwrap().unwrap();
-        let block_status =
-            blockchain.provider().block_status(latest_number.into()).unwrap().unwrap();
+        let latest_number = provider.latest_number().unwrap();
+        let latest_hash = provider.latest_hash().unwrap();
+        let header = provider.header(latest_number.into()).unwrap().unwrap();
+        let block_status = provider.block_status(latest_number.into()).unwrap().unwrap();
 
         assert_eq!(latest_number, genesis.number);
         assert_eq!(latest_hash, genesis_hash);
@@ -211,8 +210,9 @@ mod tests {
             let blockchain = Blockchain::new_with_db(&db_path, &genesis)
                 .expect("Failed to create db-backed blockchain storage");
 
-            blockchain
-                .provider()
+            let provider = blockchain.provider_mut().expect("failed to get mutable provider");
+
+            provider
                 .insert_block_with_states_and_receipts(
                     dummy_block.clone(),
                     StateUpdatesWithDeclaredClasses::default(),
@@ -234,7 +234,7 @@ mod tests {
 
             // assert genesis state is correct
 
-            let state = blockchain.provider().latest().expect("failed to get latest state");
+            let state = provider.latest().expect("failed to get latest state");
 
             let actual_udc_class_hash =
                 state.class_hash_of_contract(DEFAULT_UDC_ADDRESS).unwrap().unwrap();
@@ -258,8 +258,9 @@ mod tests {
                 .expect("Failed to create db-backed blockchain storage");
 
             // assert genesis state is correct
+            let provider = blockchain.provider().expect("failed to get provider");
 
-            let state = blockchain.provider().latest().expect("failed to get latest state");
+            let state = provider.latest().expect("failed to get latest state");
 
             let actual_udc_class_hash =
                 state.class_hash_of_contract(DEFAULT_UDC_ADDRESS).unwrap().unwrap();
@@ -275,17 +276,12 @@ mod tests {
             assert_eq!(actual_fee_token_class_hash, DEFAULT_LEGACY_ERC20_CONTRACT_CLASS_HASH);
             assert_eq!(actual_fee_token_class, DEFAULT_LEGACY_ERC20_CONTRACT_CASM.clone());
 
-            let block_number = blockchain.provider().latest_number().unwrap();
-            let block_hash = blockchain.provider().latest_hash().unwrap();
-            let block = blockchain
-                .provider()
-                .block_by_hash(dummy_block.block.header.hash)
-                .unwrap()
-                .unwrap();
+            let block_number = provider.latest_number().unwrap();
+            let block_hash = provider.latest_hash().unwrap();
+            let block = provider.block_by_hash(dummy_block.block.header.hash).unwrap().unwrap();
 
-            let tx = blockchain.provider().transaction_by_hash(dummy_tx.hash).unwrap().unwrap();
-            let tx_exec =
-                blockchain.provider().transaction_execution(dummy_tx.hash).unwrap().unwrap();
+            let tx = provider.transaction_by_hash(dummy_tx.hash).unwrap().unwrap();
+            let tx_exec = provider.transaction_execution(dummy_tx.hash).unwrap().unwrap();
 
             assert_eq!(block_hash, dummy_block.block.header.hash);
             assert_eq!(block_number, dummy_block.block.header.header.number);

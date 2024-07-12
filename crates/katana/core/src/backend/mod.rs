@@ -156,8 +156,8 @@ impl<EF: ExecutorFactory> Backend<EF> {
         let block = Block { header, body: txs }.seal();
         let block = SealedBlockWithStatus { block, status: FinalityStatus::AcceptedOnL2 };
 
-        BlockWriter::insert_block_with_states_and_receipts(
-            self.blockchain.provider(),
+        let provider = self.blockchain.provider_mut().unwrap();
+        provider.insert_block_with_states_and_receipts(
             block,
             execution_output.states,
             receipts,
@@ -232,7 +232,7 @@ mod tests {
     #[tokio::test]
     async fn test_creating_blocks() {
         let backend = create_test_backend().await;
-        let provider = backend.blockchain.provider();
+        let provider = backend.blockchain.provider().unwrap();
 
         let block_num = provider.latest_number().unwrap();
         let block_env = provider.block_env_at(block_num.into()).unwrap().unwrap();
@@ -265,9 +265,9 @@ mod tests {
         assert_eq!(block_env.l1_gas_prices.eth, 2100);
         assert_eq!(block_env.l1_gas_prices.strk, 3100);
 
-        let block0 = BlockProvider::block_by_number(provider, 0).unwrap().unwrap();
-        let block1 = BlockProvider::block_by_number(provider, 1).unwrap().unwrap();
-        let block2 = BlockProvider::block_by_number(provider, 2).unwrap().unwrap();
+        let block0 = provider.block_by_number(0).unwrap().unwrap();
+        let block1 = provider.block_by_number(1).unwrap().unwrap();
+        let block2 = provider.block_by_number(2).unwrap().unwrap();
 
         assert_eq!(block0.header.number, 0);
         assert_eq!(block1.header.number, 1);

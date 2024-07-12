@@ -1,6 +1,4 @@
-use core::fmt;
-
-use katana_db::abstraction::{Database, DbCursorMut, DbDupSortCursor, DbTx, DbTxMut};
+use katana_db::abstraction::{DbCursorMut, DbDupSortCursor, DbTx, DbTxMut};
 use katana_db::models::contract::ContractInfoChangeList;
 use katana_db::models::list::BlockList;
 use katana_db::models::storage::{ContractStorageKey, StorageEntry};
@@ -89,7 +87,7 @@ impl<Tx: DbTxMut> ContractClassWriter for DbProvider<Tx> {
 }
 
 /// A state provider that provides the latest states from the database.
-#[derive(Debug)]
+// #[derive(Debug)]
 pub(super) struct LatestStateProvider<Tx: DbTx>(Tx);
 
 impl<Tx: DbTx> LatestStateProvider<Tx> {
@@ -123,7 +121,7 @@ where
 
 impl<Tx> StateProvider for LatestStateProvider<Tx>
 where
-    Tx: DbTx + fmt::Debug + Send + Sync,
+    Tx: DbTx + Send + Sync,
 {
     fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
         let info = self.0.get::<tables::ContractInfo>(address)?;
@@ -153,15 +151,20 @@ where
 }
 
 /// A historical state provider.
-#[derive(Debug)]
-pub(super) struct HistoricalStateProvider<Tx: DbTx + fmt::Debug> {
+// #[derive(Debug)]
+pub(super) struct HistoricalStateProvider<
+    Tx: DbTx, // + fmt::Debug
+> {
     /// The database transaction used to read the database.
     tx: Tx,
     /// The block number of the state.
     block_number: u64,
 }
 
-impl<Tx: DbTx + fmt::Debug> HistoricalStateProvider<Tx> {
+impl<
+        Tx: DbTx, // + fmt::Debug
+    > HistoricalStateProvider<Tx>
+{
     pub fn new(tx: Tx, block_number: u64) -> Self {
         Self { tx, block_number }
     }
@@ -169,7 +172,10 @@ impl<Tx: DbTx + fmt::Debug> HistoricalStateProvider<Tx> {
 
 impl<Tx> ContractClassProvider for HistoricalStateProvider<Tx>
 where
-    Tx: DbTx + fmt::Debug + Send + Sync,
+    Tx: DbTx
+        // + fmt::Debug
+        + Send
+        + Sync,
 {
     fn compiled_class_hash_of_class_hash(
         &self,
@@ -207,7 +213,10 @@ where
 
 impl<Tx> StateProvider for HistoricalStateProvider<Tx>
 where
-    Tx: DbTx + fmt::Debug + Send + Sync,
+    Tx: DbTx
+        // + fmt::Debug
+        + Send
+        + Sync,
 {
     fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
         let change_list = self.tx.get::<tables::ContractInfoChangeSet>(address)?;
@@ -296,7 +305,11 @@ fn recent_change_from_block(
     // 1. the list is empty
     // 2. there are no prior changes occured before/at `block_number`
     let rank = block_list.rank(block_number);
-    if rank == 0 { None } else { block_list.select(rank - 1) }
+    if rank == 0 {
+        None
+    } else {
+        block_list.select(rank - 1)
+    }
 }
 
 #[cfg(test)]

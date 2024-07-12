@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use alloy_primitives::U256;
-use katana_db::mdbx::{test_utils, DbEnvKind};
 use katana_primitives::block::{BlockHash, FinalityStatus};
 use katana_primitives::class::CompiledClass;
 use katana_primitives::contract::ContractAddress;
@@ -12,7 +11,6 @@ use katana_primitives::genesis::{Genesis, GenesisClass};
 use katana_primitives::utils::class::parse_compiled_class_v1;
 use starknet::macros::felt;
 
-use crate::providers::db::DbProvider;
 use crate::providers::in_memory::InMemoryProvider;
 use crate::traits::block::BlockWriter;
 

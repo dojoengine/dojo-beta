@@ -3,12 +3,10 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::{Range, RangeInclusive};
 
-use katana_db::abstraction::{
-    self, Database, DbCursor, DbCursor, DbCursorMut, DbCursorMut, DbDupSortCursor, DbDupSortCursor,
-    DbTx, DbTx, DbTxMut, DbTxMut,
-};
+use crate::traits::{Provider, ProviderMut};
+use katana_db::abstraction::{Database, DbCursor, DbCursorMut, DbDupSortCursor, DbTx, DbTxMut};
 use katana_db::error::DatabaseError;
-use katana_db::mdbx::{self, DbEnv};
+use katana_db::mdbx::DbEnv;
 use katana_db::models::block::StoredBlockBodyIndices;
 use katana_db::models::contract::{
     ContractClassChange, ContractInfoChangeList, ContractNonceChange,
@@ -44,7 +42,7 @@ use crate::traits::transaction::{
     ReceiptProvider, TransactionProvider, TransactionStatusProvider, TransactionTraceProvider,
     TransactionsProviderExt,
 };
-use crate::traits::{Database, ProviderFactory};
+use crate::traits::ProviderFactory;
 use crate::{BlockchainProvider, ProviderResult};
 
 #[derive(Debug)]
@@ -59,15 +57,19 @@ impl DbProviderFactory {
 }
 
 impl ProviderFactory for DbProviderFactory {
-    fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Database>>> {
+    fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Provider>>> {
+        let provider = Box::new(DbProvider(self.db.tx()?));
+        Ok(BlockchainProvider::new(provider as Box<dyn Provider>))
+    }
+
+    fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn ProviderMut>>> {
         let provider = Box::new(DbProvider(self.db.tx_mut()?));
-        Ok(BlockchainProvider::new(provider as Box<dyn Database>))
+        Ok(BlockchainProvider::new(provider as Box<dyn ProviderMut>))
     }
 }
 
 /// A provider implementation that uses a persistent database as the backend.
 // TODO: remove the default generic type
-#[derive(Debug)]
 pub struct DbProvider<Tx: DbTx>(Tx);
 
 impl<Tx> StateFactoryProvider for DbProvider<Tx>
@@ -274,7 +276,6 @@ impl<Tx: DbTx> StateUpdateProvider for DbProvider<Tx> {
 
         if let Some(block_num) = block_num {
             let nonce_updates = dup_entries::<
-                Db,
                 tables::NonceChangeHistory,
                 HashMap<ContractAddress, Nonce>,
                 _,
@@ -284,7 +285,6 @@ impl<Tx: DbTx> StateUpdateProvider for DbProvider<Tx> {
             })?;
 
             let contract_updates = dup_entries::<
-                Db,
                 tables::ClassChangeHistory,
                 HashMap<ContractAddress, ClassHash>,
                 _,
@@ -294,7 +294,6 @@ impl<Tx: DbTx> StateUpdateProvider for DbProvider<Tx> {
             })?;
 
             let declared_classes = dup_entries::<
-                Db,
                 tables::ClassDeclarations,
                 HashMap<ClassHash, CompiledClassHash>,
                 _,
@@ -311,7 +310,6 @@ impl<Tx: DbTx> StateUpdateProvider for DbProvider<Tx> {
 
             let storage_updates = {
                 let entries = dup_entries::<
-                    Db,
                     tables::StorageChangeHistory,
                     Vec<(ContractAddress, (StorageKey, StorageValue))>,
                     _,
@@ -343,14 +341,10 @@ impl<Tx: DbTx> StateUpdateProvider for DbProvider<Tx> {
 
 impl<Tx: DbTx> TransactionProvider for DbProvider<Tx> {
     fn transaction_by_hash(&self, hash: TxHash) -> ProviderResult<Option<TxWithHash>> {
-        let db_tx = &self;
-
         if let Some(num) = self.0.get::<tables::TxNumbers>(hash)? {
             let res = self.0.get::<tables::Transactions>(num)?;
             let transaction = res.ok_or(ProviderError::MissingTx(num))?;
-            let transaction = TxWithHash { hash, transaction };
-
-            Ok(Some(transaction))
+            Ok(Some(TxWithHash { hash, transaction }))
         } else {
             Ok(None)
         }

@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::{Range, RangeInclusive};
 
-use crate::traits::{Provider, ProviderMut};
 use katana_db::abstraction::{Database, DbCursor, DbCursorMut, DbDupSortCursor, DbTx, DbTxMut};
 use katana_db::error::DatabaseError;
 use katana_db::mdbx::DbEnv;
@@ -42,7 +41,7 @@ use crate::traits::transaction::{
     ReceiptProvider, TransactionProvider, TransactionStatusProvider, TransactionTraceProvider,
     TransactionsProviderExt,
 };
-use crate::traits::ProviderFactory;
+use crate::traits::{Provider, ProviderFactory, ProviderMut};
 use crate::{BlockchainProvider, ProviderResult};
 
 #[derive(Debug)]
@@ -58,19 +57,25 @@ impl DbProviderFactory {
 
 impl ProviderFactory for DbProviderFactory {
     fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Provider>>> {
-        let provider = Box::new(DbProvider(self.db.tx()?));
+        let provider = Box::new(DbProvider::new(self.db.tx()?));
         Ok(BlockchainProvider::new(provider as Box<dyn Provider>))
     }
 
     fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn ProviderMut>>> {
-        let provider = Box::new(DbProvider(self.db.tx_mut()?));
+        let provider = Box::new(DbProvider::new(self.db.tx_mut()?));
         Ok(BlockchainProvider::new(provider as Box<dyn ProviderMut>))
     }
 }
 
 /// A provider implementation that uses a persistent database as the backend.
 // TODO: remove the default generic type
-pub struct DbProvider<Tx: DbTx>(Tx);
+pub struct DbProvider<Tx>(Tx);
+
+impl<Tx: DbTx> DbProvider<Tx> {
+    pub fn new(tx: Tx) -> Self {
+        Self(tx)
+    }
+}
 
 impl<Tx> StateFactoryProvider for DbProvider<Tx>
 where

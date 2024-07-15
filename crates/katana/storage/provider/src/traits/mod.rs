@@ -17,10 +17,16 @@ pub mod state;
 pub mod state_update;
 pub mod transaction;
 
-// TODO: placeholder traits, we should unify all provider/db (in-memory or on disk) implementations to be transactional or at least
-// to conform to the general [Database] trait so that we only need to make the underlying database generic instead of
-// the whole provider. essentially, we can have only a single type that implements all of this provider traits, (Eg DbProvider<Db: Database>)
-// and the `Database` will be pluggable to any database implementation (in-memory, on-disk, etc)
+// TODO: Unify provider implementations (in-memory and on-disk) to be transactional
+// and conform to the general `Database` trait. This would allow us to:
+//
+// 1. Make only the underlying database generic instead of the whole provider.
+// 2. Maintain only a single type (`DbProvider<Db: Database>`) that implements all the provider
+//    traits and make the `Database` pluggable.
+// 3. Remove the need for defining independent provider types for each storage implementations
+//    (in-memory/on-disk).
+// 4. Potentially simplify the provider hierarchy by leveraging common database operations.
+// 5. Improve consistency between different storage backends.
 pub trait Provider:
     BlockProvider
     + ReceiptProvider
@@ -65,6 +71,7 @@ pub trait ProviderFactory: Send + Sync {
     /// Creates a [Provider] instance for reading the blockchain data.
     fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Provider>>>;
 
-    /// Creates a [ProviderMut] instance to allow performing write operations on the blockchain data.
+    /// Creates a [ProviderMut] instance to allow performing write operations on the blockchain
+    /// data.
     fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn ProviderMut>>>;
 }

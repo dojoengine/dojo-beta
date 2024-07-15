@@ -8,7 +8,7 @@ use katana_primitives::chain::ChainId;
 use katana_primitives::env::BlockEnv;
 use katana_primitives::version::CURRENT_STARKNET_VERSION;
 use katana_primitives::FieldElement;
-use katana_provider::providers::fork::ForkedProvider;
+use katana_provider::providers::fork::{ForkedProvider, ForkedProviderFactory};
 use katana_provider::providers::in_memory::InMemoryProvider;
 use katana_provider::traits::block::{BlockHashProvider, BlockWriter};
 use num_traits::ToPrimitive;
@@ -87,7 +87,7 @@ impl<EF: ExecutorFactory> Backend<EF> {
             );
 
             let blockchain = Blockchain::new_from_forked(
-                ForkedProvider::new(provider, forked_block_num.into()).unwrap(),
+                ForkedProviderFactory::new(provider, forked_block_num.into()).unwrap(),
                 block.block_hash,
                 &config.genesis,
                 match block.status {

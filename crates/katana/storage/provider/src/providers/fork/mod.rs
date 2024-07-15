@@ -36,7 +36,24 @@ use crate::traits::transaction::{
     ReceiptProvider, TransactionProvider, TransactionStatusProvider, TransactionTraceProvider,
     TransactionsProviderExt,
 };
-use crate::ProviderResult;
+use crate::traits::{Provider, ProviderFactory, ProviderMut};
+use crate::{BlockchainProvider, ProviderResult};
+
+pub struct ForkedProviderFactory {
+    inner: Arc<ForkedProvider>,
+}
+
+impl ProviderFactory for ForkedProviderFactory {
+    fn provider(&self) -> ProviderResult<BlockchainProvider<Box<dyn Provider>>> {
+        let provider = Box::new(Arc::clone(&self.inner));
+        Ok(BlockchainProvider::new(provider as Box<dyn Provider>))
+    }
+
+    fn provider_mut(&self) -> ProviderResult<BlockchainProvider<Box<dyn ProviderMut>>> {
+        let provider = Box::new(Arc::clone(&self.inner));
+        Ok(BlockchainProvider::new(provider as Box<dyn ProviderMut>))
+    }
+}
 
 pub struct ForkedProvider {
     // TODO: insert `ForkedBackend` into `CacheDb`
@@ -45,7 +62,7 @@ pub struct ForkedProvider {
     historical_states: RwLock<HistoricalStates>,
 }
 
-impl ForkedProvider {
+impl ForkedProviderFactory {
     pub fn new(
         provider: Arc<JsonRpcClient<HttpTransport>>,
         block_id: BlockHashOrNumber,
@@ -57,7 +74,8 @@ impl ForkedProvider {
         let state = Arc::new(CacheStateDb::new(shared_provider));
         let historical_states = RwLock::new(HistoricalStates::default());
 
-        Ok(Self { storage, state, historical_states })
+        let provider = ForkedProvider { storage, state, historical_states };
+        Ok(Self { inner: Arc::new(provider) })
     }
 }
 

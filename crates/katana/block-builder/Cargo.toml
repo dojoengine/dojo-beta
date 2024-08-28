@@ -1,0 +1,14 @@
+[package]
+name = "katana-block-builder"
+edition.workspace = true
+license.workspace = true
+license-file.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+katana-pool.workspace = true
+katana-executor.workspace = true
+
+futures.workspace = true
+tokio.workspace = true

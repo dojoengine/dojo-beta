@@ -7763,6 +7763,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "katana-block-builder"
+version = "1.0.0-alpha.8"
+dependencies = [
+ "futures",
+ "katana-executor",
+ "katana-pool",
+ "tokio",
+]
+
+[[package]]
 name = "katana-cairo"
 version = "1.0.0-alpha.11"
 dependencies = [

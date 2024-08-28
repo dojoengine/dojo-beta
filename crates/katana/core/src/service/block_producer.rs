@@ -58,7 +58,7 @@ pub struct TxWithOutcome {
     pub exec_info: TxExecInfo,
 }
 
-type ServiceFuture<T> = Pin<Box<dyn Future<Output = BlockingTaskResult<T>> + Send + Sync>>;
+type ServiceFuture<T> = Pin<Box<dyn Future<Output = BlockingTaskResult<T>> + Send>>;
 
 type BlockProductionResult = Result<MinedBlockOutcome, BlockProductionError>;
 type BlockProductionFuture = ServiceFuture<Result<MinedBlockOutcome, BlockProductionError>>;
@@ -404,7 +404,7 @@ impl<EF: ExecutorFactory> Stream for IntervalBlockProducer<EF> {
                     .blocking_task_spawner
                     .spawn(|| Self::execute_transactions(executor, transactions));
 
-                pin.ongoing_execution = Some(Box::pin(fut));
+                pin.ongoing_execution = Some(fut.boxed());
             }
 
             // poll the ongoing execution if any

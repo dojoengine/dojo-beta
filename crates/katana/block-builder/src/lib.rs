@@ -1,3 +1,19 @@
+//! katana new pipeline to support syncing from da layer.
+//!
+//! ## Modes:-
+//!
+//! 1. sequencer
+//!
+//! - sync from underlying DA layer.
+//!   - what to sync exactly ??? blocks ? state update ? or just veryfing the published state root ?
+//! - once synced, start producing blocks.
+//!   - transactions will not be added to the pool until the sync stage is finished.
+//!
+//! 2. full node
+//!
+//! - sync from underlying DA layer indefinitely.
+//! - never transition to block production stage.
+
 use std::{
     future::Future,
     marker::PhantomData,

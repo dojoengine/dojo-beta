@@ -5,9 +5,12 @@ pub mod pool;
 pub mod tx;
 pub mod validation;
 
+use std::pin::Pin;
 use std::sync::Arc;
+use std::task::{Context, Poll};
 
 use futures::channel::mpsc::Receiver;
+use futures::StreamExt;
 use katana_primitives::transaction::{ExecutableTxWithHash, TxHash};
 use ordering::{FiFo, PoolOrd};
 use pool::Pool;
@@ -28,6 +31,24 @@ pub enum PoolError {
     Internal(Box<dyn std::error::Error>),
 }
 
+/// Represents a subscription to the transaction pool.
+pub struct PoolSubscription<T, O>(Receiver<PendingTx<T, O>>)
+where
+    T: PoolTransaction,
+    O: PoolOrd<Transaction = T>;
+
+impl<T, O> futures::Stream for PoolSubscription<T, O>
+where
+    T: PoolTransaction,
+    O: PoolOrd<Transaction = T>,
+{
+    type Item = PendingTx<T, O>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.0.poll_next_unpin(cx)
+    }
+}
+
 /// Represents a complete transaction pool.
 pub trait TransactionPool {
     /// The pool's transaction type.
@@ -46,6 +67,10 @@ pub trait TransactionPool {
     fn take_transactions(
         &self,
     ) -> impl Iterator<Item = PendingTx<Self::Transaction, Self::Ordering>>;
+
+    fn subscribe(&self) -> PoolSubscription<Self::Transaction, Self::Ordering> {
+        todo!()
+    }
 
     /// Check if the pool contains a transaction with the given hash.
     fn contains(&self, hash: TxHash) -> bool;

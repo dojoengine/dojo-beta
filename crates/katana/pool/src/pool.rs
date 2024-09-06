@@ -207,20 +207,31 @@ where
     }
 }
 
-#[cfg(test)]
-pub(crate) mod test_utils {
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_utils {
 
     use katana_primitives::contract::{ContractAddress, Nonce};
     use katana_primitives::FieldElement;
     use rand::Rng;
 
     use super::*;
+    use crate::ordering::FiFo;
     use crate::tx::PoolTransaction;
+    use crate::validation::NoopValidator;
 
     fn random_bytes<const SIZE: usize>() -> [u8; SIZE] {
         let mut bytes = [0u8; SIZE];
         rand::thread_rng().fill(&mut bytes[..]);
         bytes
+    }
+
+    /// Tx pool that uses a noop validator and a first-come-first-serve ordering.
+    pub type TestPool<T = PoolTx> = Pool<T, NoopValidator<T>, FiFo<T>>;
+
+    impl TestPool {
+        pub fn test() -> Self {
+            Pool::new(NoopValidator::new(), FiFo::new())
+        }
     }
 
     #[derive(Clone, Debug, PartialEq, Eq)]
@@ -293,20 +304,8 @@ mod tests {
     use katana_primitives::FieldElement;
 
     use super::test_utils::*;
-    use super::Pool;
-    use crate::ordering::FiFo;
     use crate::tx::PoolTransaction;
-    use crate::validation::NoopValidator;
     use crate::TransactionPool;
-
-    /// Tx pool that uses a noop validator and a first-come-first-serve ordering.
-    type TestPool = Pool<PoolTx, NoopValidator<PoolTx>, FiFo<PoolTx>>;
-
-    impl TestPool {
-        fn test() -> Self {
-            Pool::new(NoopValidator::new(), FiFo::new())
-        }
-    }
 
     #[test]
     fn pool_operations() {

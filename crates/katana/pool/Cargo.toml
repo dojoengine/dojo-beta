@@ -15,6 +15,12 @@ parking_lot.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 
+# feature: test-utils
+rand = { workspace = true, optional = true }
+
 [dev-dependencies]
 rand.workspace = true
 tokio.workspace = true
+
+[features]
+test-utils = [ "dep:rand" ]

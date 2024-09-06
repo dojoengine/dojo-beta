@@ -1,14 +1,19 @@
 [package]
-name = "katana-block-builder"
 edition.workspace = true
 license.workspace = true
 license-file.workspace = true
+name = "katana-block-producer"
 repository.workspace = true
 version.workspace = true
 
 [dependencies]
-katana-pool.workspace = true
 katana-executor.workspace = true
+katana-pool.workspace = true
+katana-primitives.workspace = true
 
 futures.workspace = true
 tokio.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+katana-pool = { workspace = true, features = [ "test-utils" ] }

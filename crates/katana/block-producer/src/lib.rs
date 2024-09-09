@@ -343,4 +343,38 @@ mod tests {
         let commitment_task = task.miner.on_close();
         assert!(matches!(futures::poll!(commitment_task), Poll::Ready(Ok(_))));
     }
+
+    #[tokio::test]
+    async fn test_block_production_task_flow() {
+        let pool = TestPool::test();
+        let miner = InstantMining::new(pool.add_listener());
+        let mut task = BlockProductionTask::new(miner, pool.clone());
+
+        let waker = futures::task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
+
+        // Initially, no block should be open
+        assert!(!task.miner.is_open());
+
+        // Add a transaction to trigger block opening
+        pool.add_transaction(PoolTx::new()).unwrap();
+
+        // Poll the task
+        assert!(matches!(Future::poll(Pin::new(&mut task), &mut cx), Poll::Pending));
+
+        // Block should now be open
+        assert!(task.miner.is_open());
+
+        // Poll again to process transactions
+        assert!(matches!(Future::poll(Pin::new(&mut task), &mut cx), Poll::Pending));
+
+        // Block should be closed after processing
+        assert!(!task.miner.is_open());
+
+        // Poll one more time to complete the cycle
+        assert!(matches!(Future::poll(Pin::new(&mut task), &mut cx), Poll::Pending));
+
+        // Ensure the block is still closed
+        assert!(!task.miner.is_open());
+    }
 }

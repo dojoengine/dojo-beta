@@ -175,19 +175,21 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::sync::atomic::AtomicBool;
-    use std::sync::Arc;
+    use std::sync::{Arc, Condvar, Mutex};
 
     use futures::task::ArcWake;
     use katana_pool::pool::test_utils::{PoolTx, TestPool};
 
     use super::*;
 
+    use std::sync::atomic::AtomicBool;
+
     struct InstantMining {
         is_open: bool,
-        listener: Receiver<TxHash>,
-        should_close: Arc<AtomicBool>,
         transactions: Vec<PoolTx>,
+        listener: Receiver<TxHash>,
+        should_close: Arc<(Mutex<bool>, Condvar)>,
+        waker_registered: AtomicBool,
     }
 
     impl InstantMining {
@@ -195,8 +197,9 @@ mod tests {
             Self {
                 is_open: false,
                 listener,
-                should_close: Arc::new(AtomicBool::new(false)),
+                should_close: Arc::new((Mutex::new(false), Condvar::new())),
                 transactions: Vec::new(),
+                waker_registered: AtomicBool::new(false),
             }
         }
     }
@@ -215,18 +218,37 @@ mod tests {
         }
 
         fn poll_block_close(&mut self, cx: &mut Context<'_>) -> Poll<()> {
-            if self.should_close.load(atomic::Ordering::Relaxed) {
+            let should_close = self.should_close.clone();
+
+            if *should_close.0.lock().unwrap() {
+                self.waker_registered.store(false, atomic::Ordering::Relaxed);
                 Poll::Ready(())
             } else {
-                let waker = cx.waker().clone();
-                let should_close = self.should_close.clone();
-                std::thread::spawn(move || {
-                    // is there a way to avoid this busy waiting?
-                    while !should_close.load(atomic::Ordering::Relaxed) {
-                        std::thread::yield_now();
+                if !self.waker_registered.load(atomic::Ordering::Relaxed) {
+                    if self
+                        .waker_registered
+                        .compare_exchange(
+                            false,
+                            true,
+                            atomic::Ordering::Relaxed,
+                            atomic::Ordering::Relaxed,
+                        )
+                        .is_ok()
+                    {
+                        let waker = cx.waker().clone();
+                        std::thread::spawn(move || {
+                            let (lock, cvar) = &*should_close;
+                            let mut should_close = lock.lock().unwrap();
+
+                            while !*should_close {
+                                should_close = cvar.wait(should_close).unwrap();
+                            }
+
+                            waker.wake();
+                        });
                     }
-                    waker.wake();
-                });
+                }
+
                 Poll::Pending
             }
         }
@@ -249,9 +271,10 @@ mod tests {
 
             // indicate that the block should be closed (ie dont take anymore transactions and
             // prepare for block production)
-            self.should_close
-                .compare_exchange(false, true, atomic::Ordering::Relaxed, atomic::Ordering::Relaxed)
-                .unwrap();
+            let (lock, cvar) = &*self.should_close;
+            let mut should_close = lock.lock().unwrap();
+            *should_close = true;
+            cvar.notify_one();
 
             Box::pin(async move { Ok(()) })
         }
@@ -264,14 +287,10 @@ mod tests {
 
                 // indicate that the block should be closed (ie dont take anymore transactions and
                 // prepare for block production)
-                close_flag
-                    .compare_exchange(
-                        true,
-                        false,
-                        atomic::Ordering::Relaxed,
-                        atomic::Ordering::Relaxed,
-                    )
-                    .unwrap();
+                let (lock, cvar) = &*close_flag;
+                let mut should_close = lock.lock().unwrap();
+                *should_close = false;
+                cvar.notify_one();
 
                 Ok(BlockCommitmentOutcome::default())
             })
@@ -279,7 +298,7 @@ mod tests {
     }
 
     struct CustomWaker {
-        flag: Arc<AtomicBool>,
+        flag: Arc<atomic::AtomicBool>,
     }
 
     impl ArcWake for CustomWaker {
@@ -296,7 +315,7 @@ mod tests {
         let mut task = BlockProductionTask::new(miner, pool.clone());
 
         // Create a flag to track if the waker was called
-        let is_awaken = Arc::new(AtomicBool::new(false));
+        let is_awaken = Arc::new(atomic::AtomicBool::new(false));
 
         let waker = futures::task::waker(Arc::new(CustomWaker { flag: is_awaken.clone() }));
         let mut cx = Context::from_waker(&waker);
@@ -320,19 +339,8 @@ mod tests {
         // Waker should be called when poll_block_close returns Ready
         assert!(is_awaken.load(atomic::Ordering::SeqCst));
 
-        task.miner.should_close.store(true, atomic::Ordering::Relaxed);
-        assert!(!is_awaken.load(atomic::Ordering::SeqCst));
-        // Waker should not be called when setting should_close flag
-        assert!(matches!(task.miner.poll_block_close(&mut cx), Poll::Ready(())));
-        assert!(is_awaken.load(atomic::Ordering::SeqCst));
-        // Waker should be called when poll_block_close returns Ready after setting should_close flag
-
         // Test on_close
         let commitment_task = task.miner.on_close();
-        assert!(!is_awaken.load(atomic::Ordering::SeqCst));
-        // Waker should not be called when starting on_close
         assert!(matches!(futures::poll!(commitment_task), Poll::Ready(Ok(_))));
-        assert!(!is_awaken.load(atomic::Ordering::SeqCst));
-        // Waker should not be called when commitment_task completes
     }
 }

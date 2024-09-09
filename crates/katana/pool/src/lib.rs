@@ -13,7 +13,7 @@ use futures::channel::mpsc::Receiver;
 use futures::StreamExt;
 use katana_primitives::transaction::{ExecutableTxWithHash, TxHash};
 use ordering::{FiFo, PoolOrd};
-use pool::Pool;
+use pool::{PendingTransactions, Pool};
 use tx::{PendingTx, PoolTransaction};
 use validation::stateful::TxValidator;
 use validation::{InvalidTransactionError, Validator};
@@ -31,24 +31,6 @@ pub enum PoolError {
     Internal(Box<dyn std::error::Error>),
 }
 
-/// Represents a subscription to the transaction pool.
-pub struct PoolSubscription<T, O>(Receiver<PendingTx<T, O>>)
-where
-    T: PoolTransaction,
-    O: PoolOrd<Transaction = T>;
-
-impl<T, O> futures::Stream for PoolSubscription<T, O>
-where
-    T: PoolTransaction,
-    O: PoolOrd<Transaction = T>,
-{
-    type Item = PendingTx<T, O>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.0.poll_next_unpin(cx)
-    }
-}
-
 /// Represents a complete transaction pool.
 pub trait TransactionPool {
     /// The pool's transaction type.
@@ -64,10 +46,14 @@ pub trait TransactionPool {
     /// Add a new transaction to the pool.
     fn add_transaction(&self, tx: Self::Transaction) -> PoolResult<TxHash>;
 
-    fn take_transactions(
-        &self,
-    ) -> impl Iterator<Item = PendingTx<Self::Transaction, Self::Ordering>>;
+    fn take_transactions(&self) -> PendingTransactions<Self::Transaction, Self::Ordering>;
 
+    /// Subscribe to pending transactions.
+    ///
+    /// The difference between this and `take_transactions` is that this method returns a stream
+    /// that will be updated with new transactions as they are added to the pending pool. While
+    /// `take_transactions` returns an iterator that will only return the transactions that are
+    /// currently already in the pool.
     fn subscribe(&self) -> PoolSubscription<Self::Transaction, Self::Ordering> {
         todo!()
     }
@@ -85,4 +71,23 @@ pub trait TransactionPool {
 
     /// Get a reference to the pool's validator.
     fn validator(&self) -> &Self::Validator;
+}
+
+/// Represents the receiving-end of a subscription to the transaction pool.
+#[derive(Debug)]
+pub struct PoolSubscription<T, O>(Receiver<PendingTx<T, O>>)
+where
+    T: PoolTransaction,
+    O: PoolOrd<Transaction = T>;
+
+impl<T, O> futures::Stream for PoolSubscription<T, O>
+where
+    T: PoolTransaction,
+    O: PoolOrd<Transaction = T>,
+{
+    type Item = PendingTx<T, O>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.0.poll_next_unpin(cx)
+    }
 }

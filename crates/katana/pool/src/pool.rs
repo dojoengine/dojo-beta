@@ -141,7 +141,7 @@ where
         }
     }
 
-    fn take_transactions(&self) -> impl Iterator<Item = PendingTx<T, O>> {
+    fn take_transactions(&self) -> PendingTransactions<T, O> {
         // take all the transactions
         PendingTransactions {
             all: std::mem::take(&mut *self.inner.transactions.write()).into_iter(),
@@ -191,7 +191,7 @@ where
 
 /// an iterator that yields transactions from the pool that can be included in a block, sorted by
 /// by its priority.
-struct PendingTransactions<T, O: PoolOrd> {
+pub struct PendingTransactions<T, O: PoolOrd> {
     all: IntoIter<PendingTx<T, O>>,
 }
 

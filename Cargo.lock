@@ -7764,13 +7764,14 @@ dependencies = [
 
 [[package]]
 name = "katana-block-producer"
-version = "1.0.0-alpha.9"
+version = "1.0.0-alpha.11"
 dependencies = [
  "anyhow",
  "futures",
  "katana-executor",
  "katana-pool",
  "katana-primitives",
+ "thiserror",
  "tokio",
 ]
 

@@ -198,6 +198,12 @@ where
     }
 
     let strategy = prepare_migration(&target_dir, diff.clone(), name, world_address, &ui)?;
+
+    #[cfg(feature = "walnut")]
+    if txn_config.walnut {
+        WalnutDebugger::check_api_key()?;
+    }
+
     // TODO: dry run can also show the diffs for things apart from world state
     // what new authorizations would be granted, if ipfs data would change or not,
     // etc...
@@ -220,13 +226,13 @@ where
         )
         .await?;
 
-        Ok(None)
-    } else {
         #[cfg(feature = "walnut")]
-        if txn_config.walnut {
-            WalnutDebugger::check_api_key()?;
+        if let Some(walnut_debugger) = &walnut_debugger {
+            walnut_debugger.verify_migration_strategy(ws, &strategy).await?;
         }
 
+        Ok(None)
+    } else {
         let declarers = get_declarers_accounts(&account, &rpc_url).await?;
 
         let declarers_len = if declarers.is_empty() { 1 } else { declarers.len() };

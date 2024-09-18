@@ -38,7 +38,10 @@ pub struct MigrateArgs {
 #[derive(Debug, Subcommand)]
 pub enum MigrateCommand {
     #[command(about = "Plan the migration and output the manifests.")]
-    Plan,
+    Plan {
+        #[command(flatten)]
+        transaction: TransactionOptions,
+    },
     #[command(about = "Apply the migration on-chain.")]
     Apply {
         #[command(flatten)]
@@ -89,7 +92,7 @@ impl MigrateArgs {
         })?;
 
         match self.command {
-            MigrateCommand::Plan => config
+            MigrateCommand::Plan { transaction } => config
                 .tokio_handle()
                 .block_on(async {
                     trace!(name, "Planning migration.");
@@ -100,7 +103,7 @@ impl MigrateArgs {
                         account,
                         &name,
                         true,
-                        TxnConfig::default(),
+                        transaction.into(),
                         dojo_metadata.migration.map(|m| m.skip_contracts.clone()),
                     )
                     .await

@@ -270,6 +270,7 @@ pub struct GenesisJson {
     pub accounts: HashMap<ContractAddress, GenesisAccountJson>,
     #[serde(default)]
     pub contracts: HashMap<ContractAddress, GenesisContractJson>,
+    pub settlement_block_number: BlockNumber,
 }
 
 impl GenesisJson {
@@ -611,6 +612,7 @@ impl TryFrom<GenesisJson> for Genesis {
             gas_prices: value.gas_prices,
             state_root: value.state_root,
             parent_hash: value.parent_hash,
+            settlement_block_number: value.settlement_block_number,
         })
     }
 }
@@ -1039,6 +1041,7 @@ mod tests {
         let expected_genesis = Genesis {
             classes: expected_classes,
             number: 0,
+            gather_from_block: 0,
             fee_token: expected_fee_token,
             allocations: expected_allocations,
             timestamp: 5123512314u64,
@@ -1179,6 +1182,7 @@ mod tests {
             classes,
             allocations,
             number: 0,
+            gather_from_block: 0,
             timestamp: 5123512314u64,
             state_root: felt!("0x99"),
             parent_hash: felt!("0x999"),

@@ -10,6 +10,7 @@ use katana_primitives::block::BlockHashOrNumber;
 use katana_primitives::receipt::MessageToL1;
 use katana_primitives::transaction::{ExecutableTxWithHash, L1HandlerTx, TxHash};
 use katana_provider::traits::block::BlockNumberProvider;
+use katana_provider::traits::messaging::MessagingProvider;
 use katana_provider::traits::transaction::ReceiptProvider;
 use tokio::time::{interval_at, Instant, Interval};
 use tracing::{error, info};
@@ -38,6 +39,10 @@ pub struct MessagingService<EF: ExecutorFactory> {
     send_from_block: u64,
     /// The message sending future.
     msg_send_fut: Option<MessageSettlingFuture>,
+    /// The maximum block number to gather messages from.
+    max_block: u64,
+    /// The chunk size of messages to gather.
+    chunk_size: u64,
 }
 
 impl<EF: ExecutorFactory> MessagingService<EF> {
@@ -48,14 +53,38 @@ impl<EF: ExecutorFactory> MessagingService<EF> {
         pool: TxPool,
         backend: Arc<Backend<EF>>,
     ) -> anyhow::Result<Self> {
-        let gather_from_block = config.from_block;
+        let provider = backend.blockchain.provider();
+        let gather_from_block = match provider.get_gather_from_block() {
+            Ok(Some(block)) => block,
+            Ok(None) => 0,
+            Err(_) => {
+                anyhow::bail!(
+                    "Messaging could not be initialized.\nVerify that the messaging target node \
+                     (anvil or other katana) is running.\n"
+                )
+            }
+        };
+        let send_from_block = match provider.get_send_from_block() {
+            Ok(Some(block)) => block,
+            Ok(None) => 0,
+            Err(_) => {
+                anyhow::bail!(
+                    "Messaging could not be initialized.\nVerify that the messaging target node \
+                     (anvil or other katana) is running.\n"
+                )
+            }
+        };
+
+        let max_block = config.max_block;
+        let chunk_size = config.chunk_size;
+
         let interval = interval_from_seconds(config.interval);
         let messenger = match MessengerMode::from_config(config).await {
             Ok(m) => Arc::new(m),
             Err(_) => {
-                panic!(
+                anyhow::bail!(
                     "Messaging could not be initialized.\nVerify that the messaging target node \
-                     (anvil or other katana) is running.\n",
+                     (anvil or other katana) is running.\n"
                 )
             }
         };
@@ -66,9 +95,11 @@ impl<EF: ExecutorFactory> MessagingService<EF> {
             interval,
             messenger,
             gather_from_block,
-            send_from_block: 0,
+            send_from_block,
             msg_gather_fut: None,
             msg_send_fut: None,
+            max_block,
+            chunk_size,
         })
     }
 
@@ -77,11 +108,9 @@ impl<EF: ExecutorFactory> MessagingService<EF> {
         pool: TxPool,
         backend: Arc<Backend<EF>>,
         from_block: u64,
+        max_block: u64,
+        chunk_size: u64,
     ) -> MessengerResult<(u64, usize)> {
-        // 200 avoids any possible rejection from RPC with possibly lot's of messages.
-        // TODO: May this be configurable?
-        let max_block = 200;
-
         match messenger.as_ref() {
             MessengerMode::Ethereum(inner) => {
                 let (block_num, txs) =
@@ -102,8 +131,9 @@ impl<EF: ExecutorFactory> MessagingService<EF> {
 
             #[cfg(feature = "starknet-messaging")]
             MessengerMode::Starknet(inner) => {
-                let (block_num, txs) =
-                    inner.gather_messages(from_block, max_block, backend.chain_id).await?;
+                let (block_num, txs) = inner
+                    .gather_messages(from_block, max_block, chunk_size, backend.chain_id)
+                    .await?;
                 let txs_count = txs.len();
 
                 txs.into_iter().for_each(|tx| {
@@ -188,6 +218,8 @@ impl<EF: ExecutorFactory> Stream for MessagingService<EF> {
                     pin.pool.clone(),
                     pin.backend.clone(),
                     pin.gather_from_block,
+                    pin.max_block,
+                    pin.chunk_size,
                 )));
             }
 
@@ -209,6 +241,11 @@ impl<EF: ExecutorFactory> Stream for MessagingService<EF> {
             match gather_fut.poll_unpin(cx) {
                 Poll::Ready(Ok((last_block, msg_count))) => {
                     pin.gather_from_block = last_block + 1;
+                    let _ = pin
+                        .backend
+                        .blockchain
+                        .provider()
+                        .set_gather_from_block(pin.gather_from_block);
                     return Poll::Ready(Some(MessagingOutcome::Gather {
                         lastest_block: last_block,
                         msg_count,
@@ -234,6 +271,8 @@ impl<EF: ExecutorFactory> Stream for MessagingService<EF> {
                     // +1 to move to the next local block to check messages to be
                     // sent on the settlement chain.
                     pin.send_from_block += 1;
+                    let _ =
+                        pin.backend.blockchain.provider().set_send_from_block(pin.send_from_block);
                     return Poll::Ready(Some(MessagingOutcome::Send { block_num, msg_count }));
                 }
                 Poll::Ready(Err(e)) => {

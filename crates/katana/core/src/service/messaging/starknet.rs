@@ -64,7 +64,8 @@ impl StarknetMessaging {
         &self,
         from_block: BlockId,
         to_block: BlockId,
-    ) -> Result<Vec<EmittedEvent>> {
+        chunk_size: u64,
+    ) -> Result<HashMap<u64, Vec<EmittedEvent>>> {
         trace!(target: LOG_TARGET, from_block = ?from_block, to_block = ?to_block, "Fetching logs.");
 
         let mut events = vec![];
@@ -77,8 +78,6 @@ impl StarknetMessaging {
             keys: None,
         };
 
-        // TODO: this chunk_size may also come from configuration?
-        let chunk_size = 200;
         let mut continuation_token: Option<String> = None;
 
         loop {
@@ -165,6 +164,7 @@ impl Messenger for StarknetMessaging {
         &self,
         from_block: u64,
         max_blocks: u64,
+        chunk_size: u64,
         chain_id: ChainId,
     ) -> MessengerResult<(u64, Vec<Self::MessageTransaction>)> {
         let chain_latest_block: u64 = match self.provider.block_number().await {
@@ -193,7 +193,7 @@ impl Messenger for StarknetMessaging {
 
         let mut l1_handler_txs: Vec<L1HandlerTx> = vec![];
 
-        self.fetch_events(BlockId::Number(from_block), BlockId::Number(to_block))
+        self.fetch_events(BlockId::Number(from_block), BlockId::Number(to_block), chunk_size)
             .await
             .map_err(|_| Error::SendError)
             .unwrap()
@@ -204,10 +204,15 @@ impl Messenger for StarknetMessaging {
                     event = ?e,
                     "Converting event into L1HandlerTx."
                 );
-
-                if let Ok(tx) = l1_handler_tx_from_event(e, chain_id) {
-                    l1_handler_txs.push(tx)
-                }
+                block_events.iter().for_each(|e| {
+                    if let Ok(tx) = l1_handler_tx_from_event(e, chain_id) {
+                        let last_processed_nonce =
+                            self.provider.get_gather_message_nonce().unwrap_or(0.into());
+                        if tx.nonce > last_processed_nonce {
+                            l1_handler_txs.push(tx)
+                        }
+                    }
+                })
             });
 
         Ok((to_block, l1_handler_txs))
@@ -235,7 +240,14 @@ impl Messenger for StarknetMessaging {
             };
         }
 
-        self.send_hashes(hashes.clone()).await?;
+        for (index, hash) in hashes.iter().enumerate() {
+            let stored_index = self.provider.get_send_from_index();
+            self.send_hashes(std::slice::from_ref(hash)).await?;
+            self.provider.set_send_from_index((index as u64) + 1).await?;
+        }
+
+        // reset the index
+        self.provider.set_send_from_index(0).await?;
 
         Ok(hashes)
     }

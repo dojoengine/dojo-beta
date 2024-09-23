@@ -10,7 +10,7 @@ use katana_primitives::block::{
     SealedBlockWithStatus,
 };
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::{ContractAddress, MessageHash, Nonce};
 use katana_primitives::env::BlockEnv;
 use katana_primitives::receipt::Receipt;
 use katana_primitives::state::{StateUpdates, StateUpdatesWithDeclaredClasses};
@@ -30,6 +30,7 @@ use crate::traits::block::{
 };
 use crate::traits::contract::ContractClassWriter;
 use crate::traits::env::BlockEnvProvider;
+use crate::traits::messaging::MessagingCheckpointProvider;
 use crate::traits::state::{StateFactoryProvider, StateProvider, StateRootProvider, StateWriter};
 use crate::traits::state_update::StateUpdateProvider;
 use crate::traits::transaction::{
@@ -580,4 +581,52 @@ impl BlockEnvProvider for ForkedProvider {
             sequencer_address: header.sequencer_address,
         }))
     }
+}
+
+impl MessagingCheckpointProvider for ForkedProvider {
+    fn set_send_from_block(&self, send_from_block: BlockNumber) -> ProviderResult<()> {
+        self.storage.write().messaging_info.send_block = Some(send_from_block);
+        Ok(())
+    }
+
+    fn get_send_from_block(&self) -> ProviderResult<Option<BlockNumber>> {
+        Ok(self.storage.read().messaging_info.send_block)
+    }
+
+    fn set_gather_from_block(&self, gather_from_block: BlockNumber) -> ProviderResult<()> {
+        self.storage.write().messaging_info.send_block = Some(gather_from_block);
+        Ok(())
+    }
+
+    fn get_gather_from_block(&self) -> ProviderResult<Option<BlockNumber>> {
+        Ok(self.storage.read().messaging_info.gather_block)
+    }
+
+    fn set_gather_message_nonce(&self, nonce: Nonce) -> ProviderResult<()> {
+        self.storage.write().messaging_info.gather_nonce = Some(nonce);
+        Ok(())
+    }
+
+    fn get_gather_message_nonce(&self) -> ProviderResult<Option<Nonce>> {
+        Ok(self.storage.read().messaging_info.gather_nonce)
+    }
+
+    fn set_nonce_from_message_hash(&self, message_hash: MessageHash, nonce: Nonce) -> ProviderResult<()> {
+        self.storage.write().messaging_message_nonce_mapping.insert(message_hash, nonce);
+        Ok(())
+    }
+
+    fn get_nonce_from_message_hash(&self, message_hash: MessageHash) -> ProviderResult<Option<Nonce>> {
+        Ok(self.storage.read().messaging_message_nonce_mapping.get(&message_hash).cloned())
+    }
+
+    fn set_send_from_index(&self, index: u64) -> ProviderResult<()> {
+        self.storage.write().messaging_info.send_index = Some(index);
+        Ok(())
+    }
+
+    fn get_send_from_index(&self) -> ProviderResult<Option<u64>> {
+        Ok(self.storage.read().messaging_info.send_index)
+    }
+
 }

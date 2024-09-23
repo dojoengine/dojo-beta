@@ -6,7 +6,7 @@ use katana_primitives::block::{
     SealedBlockWithStatus,
 };
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, StorageKey, StorageValue};
+use katana_primitives::contract::{ContractAddress, MessageHash, Nonce, StorageKey, StorageValue};
 use katana_primitives::env::BlockEnv;
 use katana_primitives::receipt::Receipt;
 use katana_primitives::state::{StateUpdates, StateUpdatesWithDeclaredClasses};
@@ -16,6 +16,7 @@ use katana_primitives::Felt;
 use traits::block::{BlockIdReader, BlockStatusProvider, BlockWriter};
 use traits::contract::{ContractClassProvider, ContractClassWriter};
 use traits::env::BlockEnvProvider;
+use traits::messaging::MessagingCheckpointProvider;
 use traits::state::{StateRootProvider, StateWriter};
 use traits::transaction::{TransactionStatusProvider, TransactionTraceProvider};
 
@@ -378,5 +379,50 @@ where
 {
     fn block_env_at(&self, id: BlockHashOrNumber) -> ProviderResult<Option<BlockEnv>> {
         self.provider.block_env_at(id)
+    }
+}
+
+impl<Db> MessagingCheckpointProvider for BlockchainProvider<Db>
+where
+    Db: MessagingCheckpointProvider,
+{
+    fn get_send_from_block(&self) -> ProviderResult<Option<BlockNumber>> {
+        self.provider.get_send_from_block()
+    }
+
+    fn set_send_from_block(&self, send_from_block: BlockNumber) -> ProviderResult<()> {
+        self.provider.set_send_from_block(send_from_block)
+    }
+
+    fn get_gather_from_block(&self) -> ProviderResult<Option<BlockNumber>> {
+        self.provider.get_gather_from_block()
+    }
+
+    fn set_gather_from_block(&self, gather_from_block: BlockNumber) -> ProviderResult<()> {
+        self.provider.set_gather_from_block(gather_from_block)
+    }
+
+    fn get_gather_message_nonce(&self) -> ProviderResult<Option<Nonce>> {
+        self.provider.get_gather_message_nonce()
+    }
+
+    fn set_gather_message_nonce(&self, nonce: Nonce) -> ProviderResult<()> {
+        self.provider.set_gather_message_nonce(nonce)
+    }
+
+    fn get_nonce_from_message_hash(&self, message_hash: MessageHash) -> ProviderResult<Option<Nonce>> {
+        self.provider.get_nonce_from_message_hash(message_hash)
+    }
+
+    fn set_nonce_from_message_hash(&self, message_hash: MessageHash, nonce: Nonce) -> ProviderResult<()> {
+        self.provider.set_nonce_from_message_hash(message_hash, nonce)
+    }
+
+    fn get_send_from_index(&self) -> ProviderResult<Option<u64>> {
+        self.provider.get_send_from_index()
+    }
+
+    fn set_send_from_index(&self, send_from_index: u64) -> ProviderResult<()> {
+        self.provider.set_send_from_index(send_from_index)
     }
 }

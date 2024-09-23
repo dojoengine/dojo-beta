@@ -7931,6 +7931,7 @@ dependencies = [
 name = "katana-db"
 version = "1.0.0-alpha.12"
 dependencies = [
+ "alloy-primitives",
  "anyhow",
  "criterion",
  "dojo-metrics",

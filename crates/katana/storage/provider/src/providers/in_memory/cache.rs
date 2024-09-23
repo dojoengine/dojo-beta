@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use katana_db::models::block::StoredBlockBodyIndices;
 use katana_primitives::block::{BlockHash, BlockNumber, FinalityStatus, Header};
+use katana_primitives::contract::Nonce;
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
 use katana_primitives::contract::{ContractAddress, GenericContractInfo, StorageKey, StorageValue};
 use katana_primitives::receipt::Receipt;
@@ -39,6 +40,14 @@ pub struct CacheStateDb<Db> {
     pub(crate) contract_state: RwLock<ContractStateMap>,
     pub(crate) shared_contract_classes: Arc<SharedContractClasses>,
     pub(crate) compiled_class_hashes: RwLock<CompiledClassHashesMap>,
+}
+
+#[derive(Default, Debug)]
+pub struct MessagingCheckpointId {
+    pub(crate) send_block: Option<BlockNumber>,
+    pub(crate) send_index: Option<u64>,
+    pub(crate) gather_block: Option<BlockNumber>,
+    pub(crate) gather_nonce: Option<Nonce>,
 }
 
 impl<Db> CacheStateDb<Db> {
@@ -88,6 +97,8 @@ pub struct CacheDb<Db> {
     pub(crate) transaction_hashes: HashMap<TxNumber, TxHash>,
     pub(crate) transaction_numbers: HashMap<TxHash, TxNumber>,
     pub(crate) transaction_block: HashMap<TxNumber, BlockNumber>,
+    pub(crate) messaging_info: MessagingCheckpointId,
+    pub(crate) messaging_message_nonce_mapping: HashMap<Nonce, Nonce>,
 }
 
 impl<Db> CacheStateDb<Db> {
@@ -120,6 +131,8 @@ impl<Db> CacheDb<Db> {
             transactions_executions: Vec::new(),
             latest_block_hash: Default::default(),
             latest_block_number: Default::default(),
+            messaging_info: Default::default(),
+            messaging_message_nonce_mapping: Default::default(),
         }
     }
 }

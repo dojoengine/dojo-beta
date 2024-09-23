@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
+use crate::backend::Backend;
 use futures::channel::mpsc::{channel, Receiver, Sender};
 use futures::stream::{Stream, StreamExt};
 use futures::FutureExt;
@@ -13,19 +14,19 @@ use katana_pool::validation::stateful::TxValidator;
 use katana_primitives::block::{BlockHashOrNumber, ExecutableBlock, PartialHeader};
 use katana_primitives::receipt::Receipt;
 use katana_primitives::trace::TxExecInfo;
-use katana_primitives::transaction::{ExecutableTxWithHash, TxHash, TxWithHash};
+use katana_primitives::transaction::{ExecutableTxWithHash, Tx, TxHash, TxWithHash};
 use katana_primitives::version::CURRENT_STARKNET_VERSION;
+use katana_primitives::Felt;
 use katana_provider::error::ProviderError;
 use katana_provider::traits::block::{BlockHashProvider, BlockNumberProvider};
 use katana_provider::traits::env::BlockEnvProvider;
+use katana_provider::traits::messaging::MessagingCheckpointProvider;
 use katana_provider::traits::state::StateFactoryProvider;
 use katana_tasks::{BlockingTaskPool, BlockingTaskResult};
 use parking_lot::lock_api::RawMutex;
 use parking_lot::{Mutex, RwLock};
 use tokio::time::{interval_at, Instant, Interval};
 use tracing::{error, info, trace, warn};
-
-use crate::backend::Backend;
 
 pub(crate) const LOG_TARGET: &str = "miner";
 
@@ -296,9 +297,11 @@ impl<EF: ExecutorFactory> IntervalBlockProducer<EF> {
     fn execute_transactions(
         executor: PendingExecutor,
         transactions: Vec<ExecutableTxWithHash>,
+        backend: Arc<Backend<EF>>,
     ) -> TxExecutionResult {
-        let executor = &mut executor.write();
+        let provider = backend.blockchain.provider();
 
+        let executor = &mut executor.write();
         let new_txs_count = transactions.len();
         executor.execute_transactions(transactions)?;
 
@@ -309,13 +312,34 @@ impl<EF: ExecutorFactory> IntervalBlockProducer<EF> {
         let results = txs
             .iter()
             .skip(total_txs - new_txs_count)
-            .filter_map(|(tx, res)| match res {
-                ExecutionResult::Failed { .. } => None,
-                ExecutionResult::Success { receipt, trace, .. } => Some(TxWithOutcome {
-                    tx: tx.clone(),
-                    receipt: receipt.clone(),
-                    exec_info: trace.clone(),
-                }),
+            .filter_map(|(tx, res)| {
+                let tx_ref: &Tx = &tx.transaction;
+
+                trace!(target: LOG_TARGET, "Executed transaction: {:?}", tx);
+                let _ = match tx_ref {
+                    Tx::L1Handler(l1_tx) => {
+                        // get stored nonce from message hash
+                        let message_hash_bytes = l1_tx.message_hash;
+                        let message_hash_bytes: [u8; 32] = *message_hash_bytes;
+
+                        let message_hash = Felt::from_bytes_be(&message_hash_bytes);
+                        match provider.get_nonce_from_message_hash(message_hash) {
+                            Ok(Some(nonce)) => provider.set_gather_message_nonce(nonce),
+                            Ok(None) => Ok(()),
+                            Err(_e) => Ok(()),
+                        }
+                    }
+                    _ => Ok(()),
+                };
+
+                match res {
+                    ExecutionResult::Failed { .. } => None,
+                    ExecutionResult::Success { receipt, trace, .. } => Some(TxWithOutcome {
+                        tx: tx.clone(),
+                        receipt: receipt.clone(),
+                        exec_info: trace.clone(),
+                    }),
+                }
             })
             .collect::<Vec<TxWithOutcome>>();
 
@@ -399,10 +423,11 @@ impl<EF: ExecutorFactory> Stream for IntervalBlockProducer<EF> {
 
                 let transactions: Vec<ExecutableTxWithHash> =
                     std::mem::take(&mut pin.queued).into_iter().flatten().collect();
+                let backend = pin.backend.clone();
 
                 let fut = pin
                     .blocking_task_spawner
-                    .spawn(|| Self::execute_transactions(executor, transactions));
+                    .spawn(|| Self::execute_transactions(executor, transactions, backend));
 
                 pin.ongoing_execution = Some(Box::pin(fut));
             }

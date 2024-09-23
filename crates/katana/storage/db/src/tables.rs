@@ -1,6 +1,6 @@
 use katana_primitives::block::{BlockHash, BlockNumber, FinalityStatus, Header};
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, GenericContractInfo, StorageKey};
+use katana_primitives::contract::{ContractAddress, GenericContractInfo, Nonce, StorageKey};
 use katana_primitives::receipt::Receipt;
 use katana_primitives::trace::TxExecInfo;
 use katana_primitives::transaction::{Tx, TxHash, TxNumber};
@@ -9,7 +9,7 @@ use crate::codecs::{Compress, Decode, Decompress, Encode};
 use crate::models::block::StoredBlockBodyIndices;
 use crate::models::contract::{ContractClassChange, ContractInfoChangeList, ContractNonceChange};
 use crate::models::list::BlockList;
-use crate::models::storage::{ContractStorageEntry, ContractStorageKey, StorageEntry};
+use crate::models::storage::{ContractStorageEntry, ContractStorageKey, MessagingCheckpointId, StorageEntry};
 
 pub trait Key: Encode + Decode + Clone + std::fmt::Debug {}
 pub trait Value: Compress + Decompress + std::fmt::Debug {}
@@ -44,7 +44,7 @@ pub enum TableType {
     DupSort,
 }
 
-pub const NUM_TABLES: usize = 23;
+pub const NUM_TABLES: usize = 27;
 
 /// Macro to declare `libmdbx` tables.
 #[macro_export]
@@ -167,7 +167,11 @@ define_tables_enum! {[
     (NonceChangeHistory, TableType::DupSort),
     (ClassChangeHistory, TableType::DupSort),
     (StorageChangeHistory, TableType::DupSort),
-    (StorageChangeSet, TableType::Table)
+    (StorageChangeSet, TableType::Table),
+    (MessagingCheckpointBlock, TableType::Table),
+    (MessagingCheckpointNonce, TableType::Table),
+    (MessagingMessageNonceMapping, TableType::Table),
+    (MessagingCheckpointIndex, TableType::Table)
 ]}
 
 tables! {
@@ -223,7 +227,19 @@ tables! {
     /// storage change set
     StorageChangeSet: (ContractStorageKey) => BlockList,
     /// Account storage change set
-    StorageChangeHistory: (BlockNumber, ContractStorageKey) => ContractStorageEntry
+    StorageChangeHistory: (BlockNumber, ContractStorageKey) => ContractStorageEntry,
+
+    /// Stores the block number related to messaging service
+    MessagingCheckpointBlock: (MessagingCheckpointId) => BlockNumber,
+
+    /// Stores the nonce related to messaging service
+    MessagingCheckpointNonce: (MessagingCheckpointId) => Nonce,
+
+    /// Map a message hash to a message nonce
+    MessagingMessageNonceMapping: (TxHash) => Nonce,
+
+    /// Stores the index of the messaging service
+    MessagingCheckpointIndex: (MessagingCheckpointId) => u64
 
 }
 
@@ -258,6 +274,10 @@ mod tests {
         assert_eq!(Tables::ALL[20].name(), ClassChangeHistory::NAME);
         assert_eq!(Tables::ALL[21].name(), StorageChangeHistory::NAME);
         assert_eq!(Tables::ALL[22].name(), StorageChangeSet::NAME);
+        assert_eq!(Tables::ALL[23].name(), MessagingCheckpointBlock::NAME);
+        assert_eq!(Tables::ALL[24].name(), MessagingCheckpointNonce::NAME);
+        assert_eq!(Tables::ALL[25].name(), MessagingMessageNonceMapping::NAME);
+        assert_eq!(Tables::ALL[26].name(), MessagingCheckpointIndex::NAME);
 
         assert_eq!(Tables::Headers.table_type(), TableType::Table);
         assert_eq!(Tables::BlockHashes.table_type(), TableType::Table);
@@ -282,6 +302,10 @@ mod tests {
         assert_eq!(Tables::ClassChangeHistory.table_type(), TableType::DupSort);
         assert_eq!(Tables::StorageChangeHistory.table_type(), TableType::DupSort);
         assert_eq!(Tables::StorageChangeSet.table_type(), TableType::Table);
+        assert_eq!(Tables::MessagingCheckpointBlock.table_type(), TableType::Table);
+        assert_eq!(Tables::MessagingCheckpointNonce.table_type(), TableType::Table);
+        assert_eq!(Tables::MessagingMessageNonceMapping.table_type(), TableType::Table);
+        assert_eq!(Tables::MessagingCheckpointIndex.table_type(), TableType::Table);
     }
 
     use katana_primitives::block::{BlockHash, BlockNumber, FinalityStatus, Header};
@@ -301,6 +325,7 @@ mod tests {
     };
     use crate::models::list::BlockList;
     use crate::models::storage::{ContractStorageEntry, ContractStorageKey, StorageEntry};
+    use crate::tables::Tables::{MessagingCheckpointBlock, MessagingCheckpointNonce};
 
     macro_rules! assert_key_encode_decode {
 	    { $( ($name:ty, $key:expr) ),* } => {

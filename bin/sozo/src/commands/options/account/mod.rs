@@ -215,6 +215,8 @@ mod tests {
     #[tokio::test]
     #[katana_runner::test(accounts = 2, fee = false)]
     async fn legacy_flag_works_as_expected(runner: &RunnerCtx) {
+        let runner = runner.as_binary().unwrap();
+
         let cmd = Command::parse_from([
             "sozo",
             "--legacy",
@@ -240,6 +242,8 @@ mod tests {
     #[tokio::test]
     #[katana_runner::test(accounts = 2, fee = false)]
     async fn without_legacy_flag_works_as_expected(runner: &RunnerCtx) {
+        let runner = runner.as_binary().unwrap();
+
         let cmd = Command::parse_from(["sozo", "--account-address", "0x0", "--private-key", "0x1"]);
         let dummy_call = vec![Call {
             to: Felt::from_hex("0x0").unwrap(),

@@ -1,5 +1,6 @@
 #![cfg_attr(not(test), warn(unused_crate_dependencies))]
 
+mod ctx;
 mod logs;
 mod utils;
 
@@ -8,6 +9,9 @@ use std::thread;
 
 use anyhow::{Context, Result};
 use assert_fs::TempDir;
+pub use ctx::RunnerCtx;
+#[allow(deprecated)]
+pub use dojo_test_utils::sequencer::{SequencerConfig, StarknetConfig, TestSequencer};
 use katana_node_bindings::{Katana, KatanaInstance};
 pub use katana_runner_macro::test;
 use starknet::accounts::{ExecutionEncoding, SingleOwnerAccount};
@@ -18,23 +22,6 @@ use starknet::signers::LocalWallet;
 use tokio::sync::Mutex;
 use url::Url;
 use utils::find_free_port;
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct RunnerCtx(KatanaRunner);
-
-impl RunnerCtx {
-    pub fn new(runner: KatanaRunner) -> Self {
-        Self(runner)
-    }
-}
-
-impl core::ops::Deref for RunnerCtx {
-    type Target = KatanaRunner;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
 
 #[derive(Debug)]
 pub struct KatanaRunner {
@@ -55,6 +42,8 @@ pub struct KatanaRunnerConfig {
     pub n_accounts: u16,
     /// Whether to disable the fee.
     pub disable_fee: bool,
+    /// Whether to disable transaction validation.
+    pub disable_validate: bool,
     /// The block time in milliseconds.
     pub block_time: Option<u64>,
     /// The port to run the katana runner on, if None, a random free port is chosen.
@@ -73,6 +62,7 @@ impl Default for KatanaRunnerConfig {
     fn default() -> Self {
         Self {
             n_accounts: 2,
+            disable_validate: false,
             disable_fee: false,
             block_time: None,
             port: None,
@@ -121,7 +111,8 @@ impl KatanaRunner {
             .json_log(true)
             .max_connections(10000)
             .dev(config.dev)
-            .fee(!config.disable_fee);
+            .fee(!config.disable_fee)
+            .validate(!config.disable_validate);
 
         if let Some(block_time_ms) = config.block_time {
             builder = builder.block_time(block_time_ms);

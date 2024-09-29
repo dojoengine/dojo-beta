@@ -8133,6 +8133,7 @@ dependencies = [
  "anyhow",
  "assert_fs",
  "chrono",
+ "dojo-test-utils",
  "katana-node-bindings",
  "katana-runner-macro",
  "serde",

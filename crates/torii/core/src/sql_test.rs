@@ -5,6 +5,7 @@ use cainome::cairo_serde::ContractAddress;
 use camino::Utf8PathBuf;
 use dojo_test_utils::compiler::CompilerTestSetup;
 use dojo_test_utils::migration::{copy_spawn_and_move_db, prepare_migration_with_world_and_seed};
+use dojo_test_utils::sequencer;
 use dojo_utils::{TransactionExt, TransactionWaiter, TxnConfig};
 use dojo_world::contracts::naming::{compute_bytearray_hash, compute_selector_from_names};
 use dojo_world::contracts::world::{WorldContract, WorldContractReader};
@@ -66,6 +67,8 @@ where
 #[tokio::test(flavor = "multi_thread")]
 #[katana_runner::test(accounts = 10, db_dir = copy_spawn_and_move_db().as_str())]
 async fn test_load_from_remote(sequencer: &RunnerCtx) {
+    let sequencer = sequencer.as_binary().unwrap();
+
     let options =
         SqliteConnectOptions::from_str("sqlite::memory:").unwrap().create_if_missing(true);
     let pool = SqlitePoolOptions::new().max_connections(5).connect_with(options).await.unwrap();

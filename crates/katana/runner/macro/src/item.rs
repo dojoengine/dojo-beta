@@ -5,7 +5,7 @@ use quote::{quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::parse::{Parse, ParseStream};
 use syn::{braced, parse_quote, Attribute, Ident, Signature, Visibility};
 
-use crate::config::Configuration;
+use crate::config::ConfigBuilder;
 use crate::utils::{attr_ends_with, parse_bool, parse_int, parse_string};
 
 #[derive(Clone)]

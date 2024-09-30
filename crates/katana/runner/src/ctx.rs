@@ -36,13 +36,13 @@ impl RunnerCtx {
 }
 
 impl From<KatanaRunner> for RunnerCtx {
-    fn from(runner: KatanaRunner) -> Self {
-        RunnerCtx::Binary(runner)
+    fn from(handle: KatanaRunner) -> Self {
+        RunnerCtx::Binary(handle)
     }
 }
 
 impl From<TestSequencer> for RunnerCtx {
-    fn from(sequencer: TestSequencer) -> Self {
-        RunnerCtx::Embedded(sequencer)
+    fn from(handle: TestSequencer) -> Self {
+        RunnerCtx::Embedded(handle)
     }
 }

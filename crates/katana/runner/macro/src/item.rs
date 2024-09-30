@@ -37,7 +37,7 @@ impl ItemFn {
         inner: proc_macro2::TokenStream,
         last_block: proc_macro2::TokenStream,
     ) -> TokenStream {
-        self.sig.asyncness = None;
+        // self.sig.asyncness = None;
         // empty out the arguments
         self.sig.inputs.clear();
 

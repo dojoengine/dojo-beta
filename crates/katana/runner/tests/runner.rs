@@ -33,7 +33,6 @@ async fn with_async(ctx: &RunnerCtx) -> Result<(), Box<dyn std::error::Error>> {
 fn binary_args(_: &RunnerCtx) {}
 
 #[should_panic]
-#[tokio::test(flavor = "multi_thread")]
 #[katana_runner::test(
     flavor = "embedded",
     fee = false,
@@ -41,4 +40,7 @@ fn binary_args(_: &RunnerCtx) {}
     block_time = 10,
     validation = true
 )]
-async fn embedded_runner(_: &RunnerCtx) {}
+#[tokio::test(flavor = "multi_thread")]
+async fn embedded_runner(_: &RunnerCtx) {
+    println!("Hello World!")
+}

@@ -8017,6 +8017,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "katana-pipeline"
+version = "1.0.0-alpha.13"
+
+[[package]]
 name = "katana-pool"
 version = "1.0.0-alpha.13"
 dependencies = [

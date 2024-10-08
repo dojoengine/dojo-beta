@@ -11,6 +11,24 @@ katana-executor.workspace = true
 katana-pool.workspace = true
 katana-tasks.workspace = true
 
+anyhow.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+[package]
+edition.workspace = true
+license.workspace = true
+name = "katana-pipeline"
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+katana-core.workspace = true
+katana-executor.workspace = true
+katana-pool.workspace = true
+katana-tasks.workspace = true
+
 # proof verification
 cairo-lang-runner.workspace = true
 cairo-lang-sierra.workspace = true

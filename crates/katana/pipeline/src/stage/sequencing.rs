@@ -42,7 +42,7 @@ impl<EF: ExecutorFactory> Sequencing<EF> {
 
             let service = MessagingService::new(config, pool, backend).await?;
             let task = MessagingTask::new(service);
-            let _ = self.task_manager.build_task().critical().name("Messaging").spawn(task);
+            self.task_manager.build_task().critical().name("Messaging").spawn(task);
         } else {
             // this will create a future that will never resolve
             self.task_manager
@@ -61,7 +61,7 @@ impl<EF: ExecutorFactory> Sequencing<EF> {
         let block_producer = self.block_producer.clone();
 
         let service = BlockProductionTask::new(pool, miner, block_producer);
-        let _ = self.task_manager.build_task().critical().name("Block production").spawn(service);
+        self.task_manager.build_task().critical().name("Block production").spawn(service);
     }
 }
 

@@ -9,6 +9,7 @@ use katana_core::service::{BlockProductionTask, TransactionMiner};
 use katana_executor::ExecutorFactory;
 use katana_pool::{TransactionPool, TxPool};
 use katana_tasks::TaskManager;
+use tracing::trace;
 
 use super::{StageId, StageResult};
 use crate::Stage;
@@ -42,16 +43,12 @@ impl<EF: ExecutorFactory> Sequencing<EF> {
 
             let service = MessagingService::new(config, pool, backend).await?;
             let task = MessagingTask::new(service);
-            self.task_manager.build_task().critical().name("Messaging").spawn(task);
-        } else {
-            // this will create a future that will never resolve
-            self.task_manager
-                .build_task()
-                .critical()
-                .name("Messaging")
-                .spawn(future::pending::<()>());
-        }
 
+            self.task_manager.build_task().critical().name("Messaging").spawn(task);
+            trace!(target: "pipeline", "Messaging task started");
+        } else {
+            trace!(target: "pipeline", "No messaging configuration provided, skipping messaging task");
+        }
         Ok(())
     }
 
@@ -62,6 +59,7 @@ impl<EF: ExecutorFactory> Sequencing<EF> {
 
         let service = BlockProductionTask::new(pool, miner, block_producer);
         self.task_manager.build_task().critical().name("Block production").spawn(service);
+        trace!(target: "pipeline", "Block production task started");
     }
 }
 

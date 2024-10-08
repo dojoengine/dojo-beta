@@ -13,7 +13,9 @@ use url::Url;
 //                           l26OoOmRmLhKdvvUaeqhSpt2d5eZTWkaixSZeje7XIY";
 
 const NODE_URL: &str = "http://celestia-arabica.cartridge.gg";
-const AUTH_TOKEN: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdfQ.l26OoOmRmLhKdvvUaeqhSpt2d5eZTWkaixSZeje7XIY";
+const AUTH_TOKEN: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\
+                          eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdfQ.\
+                          l26OoOmRmLhKdvvUaeqhSpt2d5eZTWkaixSZeje7XIY";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

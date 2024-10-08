@@ -6,10 +6,10 @@ use katana_pipeline::stage::state_diffs::PublishedStateDiff;
 use rand::Rng;
 use starknet::core::types::Felt;
 
-const NODE_URL: &str = "http://celestia.glihm.xyz";
+const NODE_URL: &str = "http://celestia-arabica.cartridge.gg";
 const AUTH_TOKEN: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.\
                           eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdfQ.\
-                          D05Buftacwpp2pApZwKpdEcqyLFAGw9JRrOBcBGcMO4";
+                          l26OoOmRmLhKdvvUaeqhSpt2d5eZTWkaixSZeje7XIY";
 
 fn random_felt() -> Felt {
     let mut rng = rand::thread_rng();
@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Serialize and save to JSON file
     let json = serde_json::to_string_pretty(&blob_ids)?;
-    std::fs::write(&format!("blob_ids_{}.json", 3), json)?;
+    std::fs::write(&format!("blob_ids_{}.json", 4), json)?;
 
     Ok(())
 }

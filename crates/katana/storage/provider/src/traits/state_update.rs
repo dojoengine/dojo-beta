@@ -1,7 +1,5 @@
-use katana_primitives::block::BlockHashOrNumber;
-use katana_primitives::block::BlockNumber;
-use katana_primitives::state::StateUpdates;
-use katana_primitives::state::StateUpdatesWithDeclaredClasses;
+use katana_primitives::block::{BlockHashOrNumber, BlockNumber};
+use katana_primitives::state::{StateUpdates, StateUpdatesWithDeclaredClasses};
 
 use crate::ProviderResult;
 

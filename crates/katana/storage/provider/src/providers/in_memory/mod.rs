@@ -516,6 +516,7 @@ impl BlockWriter for InMemoryProvider {
         storage.transaction_block.extend(txs_block);
         storage.receipts.extend(receipts);
 
+        drop(storage);
         self.apply_state_updates(block_number, states)
     }
 }

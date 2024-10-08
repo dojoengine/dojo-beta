@@ -24,6 +24,22 @@ pub struct StateUpdates {
     pub replaced_classes: BTreeMap<ContractAddress, ClassHash>,
 }
 
+impl StateUpdates {
+    pub fn merge(&mut self, other: StateUpdates) {
+        self.nonce_updates.extend(other.nonce_updates);
+
+        for (addr, storage) in other.storage_updates {
+            self.storage_updates.entry(addr).or_default().extend(storage);
+        }
+
+        self.replaced_classes.extend(other.replaced_classes);
+        self.deployed_contracts.extend(other.deployed_contracts);
+
+        self.declared_classes.extend(other.declared_classes);
+        self.deprecated_declared_classes.extend(other.deprecated_declared_classes);
+    }
+}
+
 /// State update with declared classes definition.
 #[derive(Debug, Default, Clone)]
 pub struct StateUpdatesWithDeclaredClasses {

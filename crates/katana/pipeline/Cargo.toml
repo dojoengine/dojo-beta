@@ -1,0 +1,48 @@
+[package]
+edition.workspace = true
+license.workspace = true
+name = "katana-pipeline"
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+katana-core.workspace = true
+katana-executor.workspace = true
+katana-pool.workspace = true
+katana-tasks.workspace = true
+
+# proof verification
+cairo-lang-runner.workspace = true
+cairo-lang-sierra.workspace = true
+cairo-lang-utils.workspace = true
+cairo-proof-parser.workspace = true
+cairo-verifier-runner = { git = "https://github.com/cartridge-gg/cairo-verifier/", package = "runner" }
+swiftness_proof_parser = { git = "https://github.com/iosis-tech/swiftness", rev = "a53d65ecbd7acf4611b0d587d815f4e9d4d493ed" }
+
+# celestia
+celestia-rpc = "0.4.1"
+celestia-types = "0.5.0"
+
+anyhow.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+itertools.workspace = true
+katana-primitives.workspace = true
+katana-provider.workspace = true
+postcard = "1.0.10"
+rand.workspace = true
+serde.workspace = true
+serde_json = "1.0.128"
+starknet.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[[bin]]
+name = "da-submit"
+path = "src/submit.rs"
+
+[[bin]]
+name = "da-download"
+path = "src/download.rs"

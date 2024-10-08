@@ -15,6 +15,7 @@ use std::path::PathBuf;
 
 use alloy_primitives::U256;
 use anyhow::{Context, Result};
+pub use celestia_types::Commitment;
 use clap::{Args, Parser};
 use console::Style;
 use dojo_utils::parse::parse_socket_address;
@@ -25,6 +26,7 @@ use katana_core::constants::{
 };
 #[allow(deprecated)]
 use katana_core::sequencer::SequencerConfig;
+use katana_pipeline::stage::state_diffs::DATip;
 use katana_primitives::block::GasPrices;
 use katana_primitives::chain::ChainId;
 use katana_primitives::class::ClassHash;
@@ -34,12 +36,29 @@ use katana_primitives::genesis::constant::DEFAULT_PREFUNDED_ACCOUNT_BALANCE;
 use katana_primitives::genesis::Genesis;
 use katana_rpc::config::ServerConfig;
 use katana_rpc_api::ApiKind;
+use serde_json::Value;
 use tracing::{info, Subscriber};
 use tracing_log::LogTracer;
 use tracing_subscriber::{fmt, EnvFilter};
 use url::Url;
 
 use crate::utils::{parse_genesis, parse_seed};
+
+/// Used as clap value parser for [Genesis].
+pub fn parse_tip(value: &str) -> Result<DATip, anyhow::Error> {
+    let parts: Vec<&str> = value.split(',').collect();
+
+    if parts.len() != 2 {
+        return Err(anyhow::anyhow!("Invalid tip format. Expected 'tip,commitment'"));
+    }
+
+    let height = parts[0].parse()?;
+
+    let commitment = Value::String(parts[1].to_string());
+    let commitment: Commitment = serde_json::from_value(commitment)?;
+
+    Ok(DATip { block_height: height, commitment })
+}
 
 #[derive(Parser, Debug)]
 pub struct NodeArgs {
@@ -110,6 +129,17 @@ pub struct NodeArgs {
     #[command(flatten)]
     #[command(next_help_heading = "Slot options")]
     pub slot: SlotOptions,
+
+    #[arg(long)]
+    #[arg(value_parser = parse_tip)]
+    #[arg(help = "The tip to sync to.")]
+    pub tip: DATip,
+
+    #[arg(long = "da.provider")]
+    pub da_provider: Url,
+
+    #[arg(long = "da.auth")]
+    pub da_auth_token: Option<String>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -237,7 +267,10 @@ impl NodeArgs {
         }
 
         // Launch the node
-        let handle = node.launch().await.context("failed to launch node")?;
+        let handle = node
+            .launch(self.da_provider, self.da_auth_token, self.tip)
+            .await
+            .context("failed to launch node")?;
 
         // Wait until an OS signal (ie SIGINT, SIGTERM) is received or the node is shutdown.
         tokio::select! {
@@ -249,15 +282,16 @@ impl NodeArgs {
             _ = handle.stopped() => { }
         }
 
-        info!("Shutting down.");
+        info!("Shutting down");
 
         Ok(())
     }
 
     fn init_logging(&self) -> Result<()> {
-        const DEFAULT_LOG_FILTER: &str = "info,executor=trace,forking::backend=trace,server=debug,\
-                                          katana_core=trace,blockifier=off,jsonrpsee_server=off,\
-                                          hyper=off,messaging=debug,node=error";
+        const DEFAULT_LOG_FILTER: &str = "info,pipeline=trace,executor=trace,\
+                                          forking::backend=trace,server=debug,katana_core=trace,\
+                                          blockifier=off,jsonrpsee_server=off,hyper=off,\
+                                          messaging=debug,node=error,pipeline=trace";
 
         LogTracer::init()?;
 

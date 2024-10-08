@@ -37,7 +37,7 @@ use crate::traits::block::{
 };
 use crate::traits::env::BlockEnvProvider;
 use crate::traits::state::{StateFactoryProvider, StateProvider, StateRootProvider};
-use crate::traits::state_update::StateUpdateProvider;
+use crate::traits::state_update::{StateUpdateProvider, StateUpdateWriter};
 use crate::traits::transaction::{
     ReceiptProvider, TransactionProvider, TransactionStatusProvider, TransactionTraceProvider,
     TransactionsProviderExt,
@@ -358,6 +358,137 @@ impl<Db: Database> StateUpdateProvider for DbProvider<Db> {
     }
 }
 
+impl<Db: Database> StateUpdateWriter for DbProvider<Db> {
+    fn apply_state_updates(
+        &self,
+        block_number: BlockNumber,
+        states: StateUpdatesWithDeclaredClasses,
+    ) -> ProviderResult<()> {
+        self.0.update(move |db_tx| -> ProviderResult<()> {
+            // insert classes
+
+            for (class_hash, compiled_hash) in states.state_updates.declared_classes {
+                db_tx.put::<tables::CompiledClassHashes>(class_hash, compiled_hash)?;
+
+                db_tx.put::<tables::ClassDeclarationBlock>(class_hash, block_number)?;
+                db_tx.put::<tables::ClassDeclarations>(block_number, class_hash)?
+            }
+
+            for (hash, compiled_class) in states.declared_compiled_classes {
+                db_tx.put::<tables::CompiledClasses>(hash, compiled_class)?;
+            }
+
+            for (class_hash, sierra_class) in states.declared_sierra_classes {
+                db_tx.put::<tables::SierraClasses>(class_hash, sierra_class)?;
+            }
+
+            // insert storage changes
+            {
+                let mut storage_cursor = db_tx.cursor_dup_mut::<tables::ContractStorage>()?;
+                for (addr, entries) in states.state_updates.storage_updates {
+                    let entries =
+                        entries.into_iter().map(|(key, value)| StorageEntry { key, value });
+
+                    for entry in entries {
+                        match storage_cursor.seek_by_key_subkey(addr, entry.key)? {
+                            Some(current) if current.key == entry.key => {
+                                storage_cursor.delete_current()?;
+                            }
+
+                            _ => {}
+                        }
+
+                        // update block list in the change set
+                        let changeset_key =
+                            ContractStorageKey { contract_address: addr, key: entry.key };
+                        let list = db_tx.get::<tables::StorageChangeSet>(changeset_key.clone())?;
+
+                        let updated_list = match list {
+                            Some(mut list) => {
+                                list.insert(block_number);
+                                list
+                            }
+                            // create a new block list if it doesn't yet exist, and insert the block
+                            // number
+                            None => BlockList::from([block_number]),
+                        };
+
+                        db_tx.put::<tables::StorageChangeSet>(changeset_key, updated_list)?;
+                        storage_cursor.upsert(addr, entry)?;
+
+                        let storage_change_sharded_key =
+                            ContractStorageKey { contract_address: addr, key: entry.key };
+
+                        db_tx.put::<tables::StorageChangeHistory>(
+                            block_number,
+                            ContractStorageEntry {
+                                key: storage_change_sharded_key,
+                                value: entry.value,
+                            },
+                        )?;
+                    }
+                }
+            }
+
+            // update contract info
+
+            for (addr, class_hash) in states.state_updates.deployed_contracts {
+                let value = if let Some(info) = db_tx.get::<tables::ContractInfo>(addr)? {
+                    GenericContractInfo { class_hash, ..info }
+                } else {
+                    GenericContractInfo { class_hash, ..Default::default() }
+                };
+
+                let new_change_set = if let Some(mut change_set) =
+                    db_tx.get::<tables::ContractInfoChangeSet>(addr)?
+                {
+                    change_set.class_change_list.insert(block_number);
+                    change_set
+                } else {
+                    ContractInfoChangeList {
+                        class_change_list: BlockList::from([block_number]),
+                        ..Default::default()
+                    }
+                };
+
+                db_tx.put::<tables::ContractInfo>(addr, value)?;
+
+                let class_change_key = ContractClassChange { contract_address: addr, class_hash };
+                db_tx.put::<tables::ClassChangeHistory>(block_number, class_change_key)?;
+                db_tx.put::<tables::ContractInfoChangeSet>(addr, new_change_set)?;
+            }
+
+            for (addr, nonce) in states.state_updates.nonce_updates {
+                let value = if let Some(info) = db_tx.get::<tables::ContractInfo>(addr)? {
+                    GenericContractInfo { nonce, ..info }
+                } else {
+                    GenericContractInfo { nonce, ..Default::default() }
+                };
+
+                let new_change_set = if let Some(mut change_set) =
+                    db_tx.get::<tables::ContractInfoChangeSet>(addr)?
+                {
+                    change_set.nonce_change_list.insert(block_number);
+                    change_set
+                } else {
+                    ContractInfoChangeList {
+                        nonce_change_list: BlockList::from([block_number]),
+                        ..Default::default()
+                    }
+                };
+
+                db_tx.put::<tables::ContractInfo>(addr, value)?;
+
+                let nonce_change_key = ContractNonceChange { contract_address: addr, nonce };
+                db_tx.put::<tables::NonceChangeHistory>(block_number, nonce_change_key)?;
+                db_tx.put::<tables::ContractInfoChangeSet>(addr, new_change_set)?;
+            }
+
+            Ok(())
+        })?
+    }
+}
+
 impl<Db: Database> TransactionProvider for DbProvider<Db> {
     fn transaction_by_hash(&self, hash: TxHash) -> ProviderResult<Option<TxWithHash>> {
         let db_tx = self.0.tx()?;
@@ -640,126 +771,7 @@ impl<Db: Database> BlockWriter for DbProvider<Db> {
                 db_tx.put::<tables::TxTraces>(tx_number, execution)?;
             }
 
-            // insert classes
-
-            for (class_hash, compiled_hash) in states.state_updates.declared_classes {
-                db_tx.put::<tables::CompiledClassHashes>(class_hash, compiled_hash)?;
-
-                db_tx.put::<tables::ClassDeclarationBlock>(class_hash, block_number)?;
-                db_tx.put::<tables::ClassDeclarations>(block_number, class_hash)?
-            }
-
-            for (hash, compiled_class) in states.declared_compiled_classes {
-                db_tx.put::<tables::CompiledClasses>(hash, compiled_class)?;
-            }
-
-            for (class_hash, sierra_class) in states.declared_sierra_classes {
-                db_tx.put::<tables::SierraClasses>(class_hash, sierra_class)?;
-            }
-
-            // insert storage changes
-            {
-                let mut storage_cursor = db_tx.cursor_dup_mut::<tables::ContractStorage>()?;
-                for (addr, entries) in states.state_updates.storage_updates {
-                    let entries =
-                        entries.into_iter().map(|(key, value)| StorageEntry { key, value });
-
-                    for entry in entries {
-                        match storage_cursor.seek_by_key_subkey(addr, entry.key)? {
-                            Some(current) if current.key == entry.key => {
-                                storage_cursor.delete_current()?;
-                            }
-
-                            _ => {}
-                        }
-
-                        // update block list in the change set
-                        let changeset_key =
-                            ContractStorageKey { contract_address: addr, key: entry.key };
-                        let list = db_tx.get::<tables::StorageChangeSet>(changeset_key.clone())?;
-
-                        let updated_list = match list {
-                            Some(mut list) => {
-                                list.insert(block_number);
-                                list
-                            }
-                            // create a new block list if it doesn't yet exist, and insert the block
-                            // number
-                            None => BlockList::from([block_number]),
-                        };
-
-                        db_tx.put::<tables::StorageChangeSet>(changeset_key, updated_list)?;
-                        storage_cursor.upsert(addr, entry)?;
-
-                        let storage_change_sharded_key =
-                            ContractStorageKey { contract_address: addr, key: entry.key };
-
-                        db_tx.put::<tables::StorageChangeHistory>(
-                            block_number,
-                            ContractStorageEntry {
-                                key: storage_change_sharded_key,
-                                value: entry.value,
-                            },
-                        )?;
-                    }
-                }
-            }
-
-            // update contract info
-
-            for (addr, class_hash) in states.state_updates.deployed_contracts {
-                let value = if let Some(info) = db_tx.get::<tables::ContractInfo>(addr)? {
-                    GenericContractInfo { class_hash, ..info }
-                } else {
-                    GenericContractInfo { class_hash, ..Default::default() }
-                };
-
-                let new_change_set = if let Some(mut change_set) =
-                    db_tx.get::<tables::ContractInfoChangeSet>(addr)?
-                {
-                    change_set.class_change_list.insert(block_number);
-                    change_set
-                } else {
-                    ContractInfoChangeList {
-                        class_change_list: BlockList::from([block_number]),
-                        ..Default::default()
-                    }
-                };
-
-                db_tx.put::<tables::ContractInfo>(addr, value)?;
-
-                let class_change_key = ContractClassChange { contract_address: addr, class_hash };
-                db_tx.put::<tables::ClassChangeHistory>(block_number, class_change_key)?;
-                db_tx.put::<tables::ContractInfoChangeSet>(addr, new_change_set)?;
-            }
-
-            for (addr, nonce) in states.state_updates.nonce_updates {
-                let value = if let Some(info) = db_tx.get::<tables::ContractInfo>(addr)? {
-                    GenericContractInfo { nonce, ..info }
-                } else {
-                    GenericContractInfo { nonce, ..Default::default() }
-                };
-
-                let new_change_set = if let Some(mut change_set) =
-                    db_tx.get::<tables::ContractInfoChangeSet>(addr)?
-                {
-                    change_set.nonce_change_list.insert(block_number);
-                    change_set
-                } else {
-                    ContractInfoChangeList {
-                        nonce_change_list: BlockList::from([block_number]),
-                        ..Default::default()
-                    }
-                };
-
-                db_tx.put::<tables::ContractInfo>(addr, value)?;
-
-                let nonce_change_key = ContractNonceChange { contract_address: addr, nonce };
-                db_tx.put::<tables::NonceChangeHistory>(block_number, nonce_change_key)?;
-                db_tx.put::<tables::ContractInfoChangeSet>(addr, new_change_set)?;
-            }
-
-            Ok(())
+            self.apply_state_updates(block_number, states)
         })?
     }
 }

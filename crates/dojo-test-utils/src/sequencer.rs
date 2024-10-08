@@ -45,10 +45,12 @@ impl TestSequencer {
             apis: vec![ApiKind::Starknet, ApiKind::Dev, ApiKind::Saya, ApiKind::Torii],
         };
 
-        let node = katana_node::build(server_config, config, starknet_config)
+        let handle = katana_node::build(server_config, config, starknet_config)
             .await
-            .expect("Failed to build node components");
-        let handle = node.launch().await.expect("Failed to launch node");
+            .expect("Failed to build node components")
+            .launch(Url::parse("localhost:5050").unwrap(), Default::default(), Default::default())
+            .await
+            .expect("Failed to launch node");
 
         let url = Url::parse(&format!("http://{}", handle.rpc.addr)).expect("Failed to parse URL");
 

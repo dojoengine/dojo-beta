@@ -17,6 +17,7 @@ use traits::block::{BlockIdReader, BlockStatusProvider, BlockWriter};
 use traits::contract::{ContractClassProvider, ContractClassWriter};
 use traits::env::BlockEnvProvider;
 use traits::state::{StateRootProvider, StateWriter};
+use traits::state_update::StateUpdateWriter;
 use traits::transaction::{TransactionStatusProvider, TransactionTraceProvider};
 
 pub mod error;
@@ -305,6 +306,19 @@ where
 {
     fn state_update(&self, block_id: BlockHashOrNumber) -> ProviderResult<Option<StateUpdates>> {
         self.provider.state_update(block_id)
+    }
+}
+
+impl<Db> StateUpdateWriter for BlockchainProvider<Db>
+where
+    Db: StateUpdateWriter,
+{
+    fn apply_state_updates(
+        &self,
+        block_number: BlockNumber,
+        updates: StateUpdatesWithDeclaredClasses,
+    ) -> ProviderResult<()> {
+        self.provider.apply_state_updates(block_number, updates)
     }
 }
 

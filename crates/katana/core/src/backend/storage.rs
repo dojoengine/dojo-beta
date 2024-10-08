@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::{anyhow, Result};
 use katana_db::mdbx::DbEnv;
 use katana_primitives::block::{BlockHash, FinalityStatus, SealedBlockWithStatus};
@@ -8,7 +10,7 @@ use katana_provider::traits::block::{BlockProvider, BlockWriter};
 use katana_provider::traits::contract::ContractClassWriter;
 use katana_provider::traits::env::BlockEnvProvider;
 use katana_provider::traits::state::{StateFactoryProvider, StateRootProvider, StateWriter};
-use katana_provider::traits::state_update::StateUpdateProvider;
+use katana_provider::traits::state_update::{StateUpdateProvider, StateUpdateWriter};
 use katana_provider::traits::transaction::{
     ReceiptProvider, TransactionProvider, TransactionStatusProvider, TransactionTraceProvider,
     TransactionsProviderExt,
@@ -24,6 +26,7 @@ pub trait Database:
     + TransactionsProviderExt
     + ReceiptProvider
     + StateUpdateProvider
+    + StateUpdateWriter
     + StateRootProvider
     + StateWriter
     + ContractClassWriter
@@ -45,6 +48,7 @@ impl<T> Database for T where
         + TransactionsProviderExt
         + ReceiptProvider
         + StateUpdateProvider
+        + StateUpdateWriter
         + StateRootProvider
         + StateWriter
         + ContractClassWriter
@@ -57,14 +61,14 @@ impl<T> Database for T where
 {
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Blockchain {
-    inner: BlockchainProvider<Box<dyn Database>>,
+    inner: Arc<BlockchainProvider<Box<dyn Database>>>,
 }
 
 impl Blockchain {
     pub fn new(provider: impl Database) -> Self {
-        Self { inner: BlockchainProvider::new(Box::new(provider)) }
+        Self { inner: Arc::new(BlockchainProvider::new(Box::new(provider))) }
     }
 
     /// Creates a new [Blockchain] with the given [Database] implementation and genesis state.

@@ -10,6 +10,7 @@ use std::time::Duration;
 use anyhow::Result;
 use dojo_metrics::prometheus_exporter::PrometheusHandle;
 use dojo_metrics::{metrics_process, prometheus_exporter, Report};
+use futures::channel::oneshot;
 use hyper::{Method, Uri};
 use jsonrpsee::server::middleware::proxy_get_request::ProxyGetRequestLayer;
 use jsonrpsee::server::{AllowHosts, ServerBuilder, ServerHandle};
@@ -25,8 +26,9 @@ use katana_core::service::block_producer::BlockProducer;
 use katana_db::mdbx::DbEnv;
 use katana_executor::implementation::blockifier::BlockifierFactory;
 use katana_executor::{ExecutorFactory, SimulationFlag};
-use katana_pipeline::stage::{self, DAClient, StateDiffDownloader};
-use katana_pipeline::{da_sync, retrieve_da_tip, stage, Pipeline};
+use katana_pipeline::stage::state_diffs::{CelestiaClient, Commitment, DATip, Downloader};
+use katana_pipeline::stage::{self};
+use katana_pipeline::{Pipeline, PipelineResult};
 use katana_pool::ordering::FiFo;
 use katana_pool::validation::stateful::TxValidator;
 use katana_pool::TxPool;
@@ -50,9 +52,9 @@ use num_traits::ToPrimitive;
 use starknet::core::types::{BlockId, BlockStatus, MaybePendingBlockWithTxHashes};
 use starknet::core::utils::parse_cairo_short_string;
 use starknet::providers::jsonrpc::HttpTransport;
-use starknet::providers::{JsonRpcClient, Provider};
+use starknet::providers::{JsonRpcClient, Provider, Url};
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tracing::{info, trace};
+use tracing::{error, info, trace};
 
 use crate::exit::NodeStoppedFuture;
 
@@ -102,7 +104,12 @@ impl Node {
     /// Start the node.
     ///
     /// This method will start all the node process, running them until the node is stopped.
-    pub async fn launch(self) -> Result<LaunchedNode> {
+    pub async fn launch(
+        self,
+        da_provider: Url,
+        da_auth_token: Option<String>,
+        tip: DATip,
+    ) -> Result<LaunchedNode> {
         if let Some(addr) = self.server_config.metrics {
             let mut reports = Vec::new();
             if let Some(ref db) = self.db {
@@ -125,6 +132,13 @@ impl Node {
         let block_producer = self.block_producer.clone();
         let validator = self.block_producer.validator().clone();
 
+        let da_client = CelestiaClient::new(da_provider, da_auth_token, "katana").await?;
+
+        // TODO: tip should be retrieved from the network (either p2p or sequencer)
+
+        let downloader = Downloader::new(da_client, tip);
+        let statediffs = stage::StateDiffs::new(downloader, backend.blockchain.clone());
+
         // --- build sequencing stage
 
         #[allow(deprecated)]
@@ -139,9 +153,16 @@ impl Node {
         // --- build and start the pipeline
 
         let mut pipeline = Pipeline::new();
+        pipeline.add_stage(Box::new(statediffs));
         pipeline.add_stage(Box::new(sequencing));
 
-        self.task_manager.spawn(pipeline.into_future());
+        self.task_manager.build_task().critical().name("Pipeline").spawn(async move {
+            // Run the pipeline as a future and capture the returned error.
+            let result = pipeline.into_future().await;
+            if let Err(error) = result {
+                error!(target: "pipeline", %error, "Pipeline failed.");
+            }
+        });
 
         let node_components = (pool, backend, block_producer, validator);
         let rpc = spawn(node_components, self.server_config.clone()).await?;

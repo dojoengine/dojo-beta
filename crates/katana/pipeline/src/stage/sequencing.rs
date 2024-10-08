@@ -71,6 +71,7 @@ impl<EF: ExecutorFactory> Stage for Sequencing<EF> {
         StageId::Sequencing
     }
 
+    #[tracing::instrument(skip_all, name = "Stage", fields(id = %self.id()))]
     async fn execute(&mut self) -> StageResult {
         let _ = self.run_messaging().await?;
         let _ = self.run_block_production().await;

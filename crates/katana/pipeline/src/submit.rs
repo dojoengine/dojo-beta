@@ -2,7 +2,7 @@ use celestia_rpc::{BlobClient, Client};
 use celestia_types::nmt::Namespace;
 use celestia_types::{Blob, Commitment, TxConfig};
 use katana_pipeline::os::StarknetOsOutput;
-use katana_pipeline::stage::PublishedStateDiff;
+use katana_pipeline::stage::state_diffs::PublishedStateDiff;
 use rand::Rng;
 use starknet::core::types::Felt;
 

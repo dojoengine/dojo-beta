@@ -27,7 +27,7 @@ use crate::traits::block::{
 use crate::traits::contract::ContractClassWriter;
 use crate::traits::env::BlockEnvProvider;
 use crate::traits::state::{StateFactoryProvider, StateProvider, StateRootProvider, StateWriter};
-use crate::traits::state_update::StateUpdateProvider;
+use crate::traits::state_update::{StateUpdateProvider, StateUpdateWriter};
 use crate::traits::transaction::{
     ReceiptProvider, TransactionProvider, TransactionStatusProvider, TransactionTraceProvider,
     TransactionsProviderExt,
@@ -453,6 +453,23 @@ impl StateRootProvider for InMemoryProvider {
     }
 }
 
+impl StateUpdateWriter for InMemoryProvider {
+    fn apply_state_updates(
+        &self,
+        block_number: BlockNumber,
+        states: StateUpdatesWithDeclaredClasses,
+    ) -> ProviderResult<()> {
+        let mut storage = self.storage.write();
+        storage.state_update.insert(block_number, states.state_updates.clone());
+
+        self.state.insert_updates(states);
+        let snapshot = self.state.create_snapshot();
+        self.historical_states.write().insert(block_number, Box::new(snapshot));
+
+        Ok(())
+    }
+}
+
 impl BlockWriter for InMemoryProvider {
     fn insert_block_with_states_and_receipts(
         &self,
@@ -499,14 +516,7 @@ impl BlockWriter for InMemoryProvider {
         storage.transaction_block.extend(txs_block);
         storage.receipts.extend(receipts);
 
-        storage.state_update.insert(block_number, states.state_updates.clone());
-
-        self.state.insert_updates(states);
-
-        let snapshot = self.state.create_snapshot();
-        self.historical_states.write().insert(block_number, Box::new(snapshot));
-
-        Ok(())
+        self.apply_state_updates(block_number, states)
     }
 }
 

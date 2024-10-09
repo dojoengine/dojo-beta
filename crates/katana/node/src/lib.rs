@@ -267,7 +267,6 @@ pub async fn build(mut config: Config) -> Result<Node> {
     // let sync_downloader = StateDiffDownloader::new(da_client, tip);
     // let _ = da_sync(&blockchain.provider(), sync_downloader).await?;
 
-    let chain_id = starknet_config.env.chain_id;
     let block_context_generator = BlockContextGenerator::default().into();
     let backend = Arc::new(Backend {
         blockchain,

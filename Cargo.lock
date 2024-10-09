@@ -5164,8 +5164,6 @@ dependencies = [
  "katana-executor",
  "katana-node",
  "katana-primitives",
- "katana-rpc",
- "katana-rpc-api",
  "scarb",
  "scarb-ui",
  "serde",
@@ -8645,8 +8643,6 @@ dependencies = [
  "katana-node",
  "katana-pipeline",
  "katana-primitives",
- "katana-rpc",
- "katana-rpc-api",
  "katana-slot-controller",
  "serde_json",
  "shellexpand",
@@ -8716,7 +8712,6 @@ dependencies = [
  "katana-tasks",
  "lazy_static",
  "metrics",
- "num-traits 0.2.19",
  "parking_lot 0.12.3",
  "reqwest 0.12.8",
  "serde",
@@ -8800,6 +8795,8 @@ dependencies = [
  "num-traits 0.2.19",
  "serde_json",
  "starknet 0.12.0",
+ "strum 0.25.0",
+ "strum_macros 0.25.3",
  "tower 0.4.13",
  "tower-http 0.4.4",
  "tracing",
@@ -15553,6 +15550,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-util",
+ "toml 0.8.19",
  "tracing",
 ]
 
@@ -16276,6 +16274,19 @@ name = "vcpkg"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
+
+[[package]]
+name = "verify_db_balances"
+version = "1.0.0-alpha.14"
+dependencies = [
+ "clap",
+ "num-traits 0.2.19",
+ "sqlx",
+ "starknet 0.12.0",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "version_check"

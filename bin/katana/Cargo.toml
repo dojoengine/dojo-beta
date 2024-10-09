@@ -12,8 +12,6 @@ katana-db.workspace = true
 katana-node.workspace = true
 katana-pipeline.workspace = true
 katana-primitives.workspace = true
-katana-rpc.workspace = true
-katana-rpc-api.workspace = true
 katana-slot-controller = { workspace = true, optional = true }
 
 celestia-types = "0.5.0"

@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use dojo_types::primitive::Primitive;
 use dojo_types::schema::{EnumOption, Member, Struct, Ty};
 use dojo_world::contracts::abi::model::Layout;
@@ -13,9 +14,13 @@ use sqlx::{Pool, Sqlite};
 use starknet::core::types::{Event, Felt, InvokeTransaction, Transaction};
 use starknet_crypto::poseidon_hash_many;
 use tokio::sync::mpsc::UnboundedSender;
+use utils::felts_to_sql_string;
 
-use crate::cache::{Model, ModelCache};
-use crate::executor::{Argument, DeleteEntityQuery, QueryMessage, QueryType};
+use crate::executor::{
+    Argument, DeleteEntityQuery, QueryMessage, QueryType, ResetCursorsQuery, SetHeadQuery,
+    UpdateCursorsQuery,
+};
+use crate::types::ContractType;
 use crate::utils::utc_dt_string_from_timestamp;
 
 type IsEventMessage = bool;
@@ -24,57 +29,76 @@ type IsStoreUpdate = bool;
 pub const WORLD_CONTRACT_TYPE: &str = "WORLD";
 pub const FELT_DELIMITER: &str = "/";
 
+pub mod cache;
+pub mod erc;
+pub mod query_queue;
 #[cfg(test)]
-#[path = "sql_test.rs"]
+#[path = "test.rs"]
 mod test;
+pub mod utils;
+
+use cache::{LocalCache, Model, ModelCache};
 
 #[derive(Debug, Clone)]
 pub struct Sql {
-    world_address: Felt,
     pub pool: Pool<Sqlite>,
     pub executor: UnboundedSender<QueryMessage>,
     model_cache: Arc<ModelCache>,
+    // when SQL struct is cloned a empty local_cache is created
+    local_cache: LocalCache,
+}
+
+#[derive(Debug, Clone)]
+pub struct Cursors {
+    pub cursor_map: HashMap<Felt, Felt>,
+    pub last_pending_block_tx: Option<Felt>,
+    pub head: Option<u64>,
 }
 
 impl Sql {
     pub async fn new(
         pool: Pool<Sqlite>,
-        world_address: Felt,
         executor: UnboundedSender<QueryMessage>,
+        contracts: &HashMap<Felt, ContractType>,
     ) -> Result<Self> {
-        executor.send(QueryMessage::other(
-            "INSERT OR IGNORE INTO contracts (id, contract_address, contract_type) VALUES (?, ?, \
-             ?)"
-            .to_string(),
-            vec![
-                Argument::FieldElement(world_address),
-                Argument::FieldElement(world_address),
-                Argument::String(WORLD_CONTRACT_TYPE.to_string()),
-            ],
-        ))?;
+        for contract in contracts {
+            executor.send(QueryMessage::other(
+                "INSERT OR IGNORE INTO contracts (id, contract_address, contract_type) VALUES (?, \
+                 ?, ?)"
+                    .to_string(),
+                vec![
+                    Argument::FieldElement(*contract.0),
+                    Argument::FieldElement(*contract.0),
+                    Argument::String(contract.1.to_string()),
+                ],
+            ))?;
+        }
 
+        let local_cache = LocalCache::new(pool.clone()).await;
         let db = Self {
             pool: pool.clone(),
-            world_address,
             executor,
-            model_cache: Arc::new(ModelCache::new(pool)),
+            model_cache: Arc::new(ModelCache::new(pool.clone())),
+            local_cache,
         };
+
         db.execute().await?;
 
         Ok(db)
     }
 
-    pub async fn head(&self) -> Result<(u64, Option<Felt>, Option<Felt>)> {
+    pub async fn head(&self, contract: Felt) -> Result<(u64, Option<Felt>, Option<Felt>)> {
         let indexer_query =
             sqlx::query_as::<_, (Option<i64>, Option<String>, Option<String>, String)>(
-                "SELECT head, last_pending_block_world_tx, last_pending_block_tx, contract_type \
-                 FROM contracts WHERE id = ?",
+                "SELECT head, last_pending_block_contract_tx, last_pending_block_tx, \
+                 contract_type FROM contracts WHERE id = ?",
             )
-            .bind(format!("{:#x}", self.world_address));
+            .bind(format!("{:#x}", contract));
 
-        let indexer: (Option<i64>, Option<String>, Option<String>, String) =
-            indexer_query.fetch_one(&self.pool).await?;
-
+        let indexer: (Option<i64>, Option<String>, Option<String>, String) = indexer_query
+            .fetch_one(&self.pool)
+            .await
+            .with_context(|| format!("Failed to fetch head for contract: {:#x}", contract))?;
         Ok((
             indexer
                 .0
@@ -86,36 +110,52 @@ impl Sql {
         ))
     }
 
-    pub fn set_head(&mut self, head: u64) -> Result<()> {
-        let head = Argument::Int(
+    pub async fn set_head(
+        &mut self,
+        head: u64,
+        last_block_timestamp: u64,
+        world_txns_count: u64,
+        contract_address: Felt,
+    ) -> Result<()> {
+        let head_arg = Argument::Int(
             head.try_into().map_err(|_| anyhow!("Head value {} doesn't fit in i64", head))?,
         );
-        let id = Argument::FieldElement(self.world_address);
-        self.executor
-            .send(QueryMessage::other(
-                "UPDATE contracts SET head = ? WHERE id = ?".to_string(),
-                vec![head, id],
-            ))
-            .map_err(|e| anyhow!("Failed to send set_head message: {}", e))?;
+        let last_block_timestamp_arg =
+            Argument::Int(last_block_timestamp.try_into().map_err(|_| {
+                anyhow!("Last block timestamp value {} doesn't fit in i64", last_block_timestamp)
+            })?);
+        let id = Argument::FieldElement(contract_address);
+
+        self.executor.send(QueryMessage::new(
+            "UPDATE contracts SET head = ?, last_block_timestamp = ? WHERE id = ?".to_string(),
+            vec![head_arg, last_block_timestamp_arg, id],
+            QueryType::SetHead(SetHeadQuery {
+                head,
+                last_block_timestamp,
+                txns_count: world_txns_count,
+                contract_address,
+            }),
+        ))?;
 
         Ok(())
     }
 
-    pub fn set_last_pending_block_world_tx(
+    pub fn set_last_pending_block_contract_tx(
         &mut self,
-        last_pending_block_world_tx: Option<Felt>,
+        contract: Felt,
+        last_pending_block_contract_tx: Option<Felt>,
     ) -> Result<()> {
-        let last_pending_block_world_tx = if let Some(f) = last_pending_block_world_tx {
+        let last_pending_block_contract_tx = if let Some(f) = last_pending_block_contract_tx {
             Argument::String(format!("{:#x}", f))
         } else {
             Argument::Null
         };
 
-        let id = Argument::FieldElement(self.world_address);
+        let id = Argument::FieldElement(contract);
 
         self.executor.send(QueryMessage::other(
-            "UPDATE contracts SET last_pending_block_world_tx = ? WHERE id = ?".to_string(),
-            vec![last_pending_block_world_tx, id],
+            "UPDATE contracts SET last_pending_block_contract_tx = ? WHERE id = ?".to_string(),
+            vec![last_pending_block_contract_tx, id],
         ))?;
 
         Ok(())
@@ -127,13 +167,86 @@ impl Sql {
         } else {
             Argument::Null
         };
-        let id = Argument::FieldElement(self.world_address);
 
         self.executor.send(QueryMessage::other(
-            "UPDATE contracts SET last_pending_block_tx = ? WHERE id = ?".to_string(),
-            vec![last_pending_block_tx, id],
+            "UPDATE contracts SET last_pending_block_tx = ? WHERE 1=1".to_string(),
+            vec![last_pending_block_tx],
         ))?;
 
+        Ok(())
+    }
+
+    pub(crate) async fn cursors(&self) -> Result<Cursors> {
+        let mut conn: PoolConnection<Sqlite> = self.pool.acquire().await?;
+        let cursors = sqlx::query_as::<_, (String, String)>(
+            "SELECT contract_address, last_pending_block_contract_tx FROM contracts WHERE \
+             last_pending_block_contract_tx IS NOT NULL",
+        )
+        .fetch_all(&mut *conn)
+        .await?;
+
+        let (head, last_pending_block_tx) = sqlx::query_as::<_, (Option<i64>, Option<String>)>(
+            "SELECT head, last_pending_block_tx FROM contracts WHERE 1=1",
+        )
+        .fetch_one(&mut *conn)
+        .await?;
+
+        let head = head.map(|h| h.try_into().expect("doesn't fit in u64"));
+        let last_pending_block_tx =
+            last_pending_block_tx.map(|t| Felt::from_str(&t).expect("its a valid felt"));
+        Ok(Cursors {
+            cursor_map: cursors
+                .into_iter()
+                .map(|(c, t)| {
+                    (
+                        Felt::from_str(&c).expect("its a valid felt"),
+                        Felt::from_str(&t).expect("its a valid felt"),
+                    )
+                })
+                .collect(),
+            last_pending_block_tx,
+            head,
+        })
+    }
+
+    // For a given contract address, sets head to the passed value and sets
+    // last_pending_block_contract_tx and last_pending_block_tx to null
+    pub fn reset_cursors(
+        &mut self,
+        head: u64,
+        cursor_map: HashMap<Felt, (Felt, u64)>,
+        last_block_timestamp: u64,
+    ) -> Result<()> {
+        self.executor.send(QueryMessage::new(
+            "".to_string(),
+            vec![],
+            QueryType::ResetCursors(ResetCursorsQuery {
+                cursor_map,
+                last_block_timestamp,
+                last_block_number: head,
+            }),
+        ))?;
+
+        Ok(())
+    }
+
+    pub fn update_cursors(
+        &mut self,
+        head: u64,
+        last_pending_block_tx: Option<Felt>,
+        cursor_map: HashMap<Felt, (Felt, u64)>,
+        pending_block_timestamp: u64,
+    ) -> Result<()> {
+        self.executor.send(QueryMessage::new(
+            "".to_string(),
+            vec![],
+            QueryType::UpdateCursors(UpdateCursorsQuery {
+                cursor_map,
+                last_pending_block_tx,
+                last_block_number: head,
+                pending_block_timestamp,
+            }),
+        ))?;
         Ok(())
     }
 
@@ -296,7 +409,7 @@ impl Sql {
         let entity_id = format!("{:#x}", poseidon_hash_many(&keys));
         let model_id = format!("{:#x}", compute_selector_from_names(model_namespace, model_name));
 
-        let keys_str = felts_sql_string(&keys);
+        let keys_str = felts_to_sql_string(&keys);
         let insert_entities = "INSERT INTO event_messages (id, keys, event_id, executed_at) \
                                VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET \
                                updated_at=CURRENT_TIMESTAMP, executed_at=EXCLUDED.executed_at, \
@@ -444,15 +557,15 @@ impl Sql {
                 Transaction::Invoke(InvokeTransaction::V1(invoke_v1_transaction)) => (
                     Argument::FieldElement(invoke_v1_transaction.transaction_hash),
                     Argument::FieldElement(invoke_v1_transaction.sender_address),
-                    Argument::String(felts_sql_string(&invoke_v1_transaction.calldata)),
+                    Argument::String(felts_to_sql_string(&invoke_v1_transaction.calldata)),
                     Argument::FieldElement(invoke_v1_transaction.max_fee),
-                    Argument::String(felts_sql_string(&invoke_v1_transaction.signature)),
+                    Argument::String(felts_to_sql_string(&invoke_v1_transaction.signature)),
                     Argument::FieldElement(invoke_v1_transaction.nonce),
                 ),
                 Transaction::L1Handler(l1_handler_transaction) => (
                     Argument::FieldElement(l1_handler_transaction.transaction_hash),
                     Argument::FieldElement(l1_handler_transaction.contract_address),
-                    Argument::String(felts_sql_string(&l1_handler_transaction.calldata)),
+                    Argument::String(felts_to_sql_string(&l1_handler_transaction.calldata)),
                     Argument::FieldElement(Felt::ZERO), // has no max_fee
                     Argument::String("".to_string()),   // has no signature
                     Argument::FieldElement((l1_handler_transaction.nonce).into()),
@@ -489,8 +602,8 @@ impl Sql {
         block_timestamp: u64,
     ) -> Result<()> {
         let id = Argument::String(event_id.to_string());
-        let keys = Argument::String(felts_sql_string(&event.keys));
-        let data = Argument::String(felts_sql_string(&event.data));
+        let keys = Argument::String(felts_to_sql_string(&event.keys));
+        let data = Argument::String(felts_to_sql_string(&event.data));
         let hash = Argument::FieldElement(transaction_hash);
         let executed_at = Argument::String(utc_dt_string_from_timestamp(block_timestamp));
 
@@ -1144,9 +1257,4 @@ impl Sql {
         self.executor.send(execute)?;
         recv.await?
     }
-}
-
-pub fn felts_sql_string(felts: &[Felt]) -> String {
-    felts.iter().map(|k| format!("{:#x}", k)).collect::<Vec<String>>().join(FELT_DELIMITER)
-        + FELT_DELIMITER
 }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -22,13 +23,8 @@ use tokio::sync::broadcast;
 
 use crate::engine::{Engine, EngineConfig, Processors};
 use crate::executor::Executor;
-use crate::processors::generate_event_processors_map;
-use crate::processors::register_model::RegisterModelProcessor;
-use crate::processors::store_del_record::StoreDelRecordProcessor;
-use crate::processors::store_set_record::StoreSetRecordProcessor;
-use crate::processors::store_update_member::StoreUpdateMemberProcessor;
-use crate::processors::store_update_record::StoreUpdateRecordProcessor;
 use crate::sql::Sql;
+use crate::types::ContractType;
 
 pub async fn bootstrap_engine<P>(
     world: WorldContractReader<P>,
@@ -40,26 +36,19 @@ where
 {
     let (shutdown_tx, _) = broadcast::channel(1);
     let to = provider.block_hash_and_number().await?.block_number;
+    let world_address = world.address;
     let mut engine = Engine::new(
         world,
         db.clone(),
         provider,
-        Processors {
-            event: generate_event_processors_map(vec![
-                Arc::new(RegisterModelProcessor),
-                Arc::new(StoreSetRecordProcessor),
-                Arc::new(StoreUpdateRecordProcessor),
-                Arc::new(StoreUpdateMemberProcessor),
-                Arc::new(StoreDelRecordProcessor),
-            ])?,
-            ..Processors::default()
-        },
+        Processors { ..Processors::default() },
         EngineConfig::default(),
         shutdown_tx,
         None,
+        Arc::new(HashMap::from([(world_address, ContractType::WORLD)])),
     );
 
-    let data = engine.fetch_range(0, to, None).await.unwrap();
+    let data = engine.fetch_range(0, to, &HashMap::new()).await.unwrap();
     engine.process_range(data).await.unwrap();
 
     db.execute().await.unwrap();
@@ -147,7 +136,13 @@ async fn test_load_from_remote(sequencer: &RunnerCtx) {
         executor.run().await.unwrap();
     });
 
-    let db = Sql::new(pool.clone(), world_reader.address, sender.clone()).await.unwrap();
+    let db = Sql::new(
+        pool.clone(),
+        sender.clone(),
+        &HashMap::from([(world_reader.address, ContractType::WORLD)]),
+    )
+    .await
+    .unwrap();
 
     let _ = bootstrap_engine(world_reader, db.clone(), provider).await.unwrap();
 
@@ -310,7 +305,13 @@ async fn test_load_from_remote_del(sequencer: &RunnerCtx) {
         executor.run().await.unwrap();
     });
 
-    let db = Sql::new(pool.clone(), world_reader.address, sender.clone()).await.unwrap();
+    let db = Sql::new(
+        pool.clone(),
+        sender.clone(),
+        &HashMap::from([(world_reader.address, ContractType::WORLD)]),
+    )
+    .await
+    .unwrap();
 
     let _ = bootstrap_engine(world_reader, db.clone(), provider).await;
 
@@ -402,7 +403,13 @@ async fn test_update_with_set_record(sequencer: &RunnerCtx) {
         executor.run().await.unwrap();
     });
 
-    let db = Sql::new(pool.clone(), world_reader.address, sender.clone()).await.unwrap();
+    let db = Sql::new(
+        pool.clone(),
+        sender.clone(),
+        &HashMap::from([(world_reader.address, ContractType::WORLD)]),
+    )
+    .await
+    .unwrap();
 
     let _ = bootstrap_engine(world_reader, db.clone(), Arc::clone(&provider)).await.unwrap();
 }

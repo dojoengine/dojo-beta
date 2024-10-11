@@ -8,7 +8,7 @@ use katana_primitives::block::{
 };
 use katana_primitives::chain::ChainId;
 use katana_primitives::class::{CompiledClass, FlattenedSierraClass};
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::env::{CfgEnv, FeeTokenAddressses};
 use katana_primitives::genesis::allocation::DevAllocationsGenerator;
 use katana_primitives::genesis::constant::{
@@ -87,7 +87,7 @@ pub fn state_provider(genesis: &Genesis) -> Box<dyn StateProvider> {
 pub fn valid_blocks() -> [ExecutableBlock; 3] {
     let version = Version::new(0, 13, 0);
     let chain_id = ChainId::parse("KATANA").unwrap();
-    let sequencer_address = ContractAddress(1u64.into());
+    let sequencer_address = Address(1u64.into());
 
     let sender_address =
         address!("0x06b86e40118f29ebe393a75469b4d926c7a44c2e2681b6d319520b7c1156d114");
@@ -221,7 +221,7 @@ pub fn valid_blocks() -> [ExecutableBlock; 3] {
 #[rstest::fixture]
 pub fn cfg() -> CfgEnv {
     let fee_token_addresses =
-        FeeTokenAddressses { eth: DEFAULT_FEE_TOKEN_ADDRESS, strk: ContractAddress(222u64.into()) };
+        FeeTokenAddressses { eth: DEFAULT_FEE_TOKEN_ADDRESS, strk: Address(222u64.into()) };
 
     CfgEnv {
         fee_token_addresses,

@@ -1,6 +1,6 @@
 use alloy_primitives::U256;
 use katana_primitives::class::ClassHash;
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::genesis::allocation::GenesisAccountAlloc;
 use katana_primitives::Felt;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use starknet::core::serde::unsigned_field_element::{UfeHex, UfeHexOption};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Account {
-    pub address: ContractAddress,
+    pub address: Address,
     #[serde_as(as = "UfeHex")]
     pub public_key: Felt,
     #[serde_as(as = "UfeHexOption")]
@@ -23,7 +23,7 @@ pub struct Account {
 }
 
 impl Account {
-    pub fn new(address: ContractAddress, account: &GenesisAccountAlloc) -> Self {
+    pub fn new(address: Address, account: &GenesisAccountAlloc) -> Self {
         Self {
             address,
             public_key: account.public_key(),

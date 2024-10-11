@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, Nonce, StorageKey, StorageValue};
 
 use super::backend::SharedStateProvider;
 use crate::providers::in_memory::cache::CacheStateDb;
@@ -23,10 +23,7 @@ impl ForkedStateDb {
 }
 
 impl StateProvider for ForkedStateDb {
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         if let hash @ Some(_) = self
             .contract_state
             .read()
@@ -49,7 +46,7 @@ impl StateProvider for ForkedStateDb {
     //   from remote state anymore)
     // Nonce == 0 && ClassHash != 0
     // - Contract exists and was deployed locally (always read from local state)
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         if let nonce @ Some(_) = self
             .contract_state
             .read()
@@ -64,7 +61,7 @@ impl StateProvider for ForkedStateDb {
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         if let value @ Some(_) =
@@ -106,22 +103,19 @@ impl ContractClassProvider for CacheStateDb<SharedStateProvider> {
 pub(super) struct LatestStateProvider(pub(super) Arc<ForkedStateDb>);
 
 impl StateProvider for LatestStateProvider {
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         StateProvider::nonce(&self.0, address)
     }
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         StateProvider::storage(&self.0, address, storage_key)
     }
 
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         StateProvider::class_hash_of_contract(&self.0, address)
     }
 }
@@ -144,7 +138,7 @@ impl ContractClassProvider for LatestStateProvider {
 }
 
 impl StateProvider for ForkedSnapshot {
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         if let nonce @ Some(_) = self
             .inner
             .contract_state
@@ -159,7 +153,7 @@ impl StateProvider for ForkedSnapshot {
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         if let value @ Some(_) =
@@ -170,10 +164,7 @@ impl StateProvider for ForkedSnapshot {
         StateProvider::storage(&self.inner.db, address, storage_key)
     }
 
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         if let class_hash @ Some(_) = self
             .inner
             .contract_state

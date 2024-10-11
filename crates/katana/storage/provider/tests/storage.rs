@@ -3,7 +3,7 @@ mod fixtures;
 use anyhow::Result;
 use fixtures::{fork_provider_with_spawned_fork_network, in_memory_provider, provider_with_states};
 use katana_primitives::block::{BlockHashOrNumber, BlockNumber};
-use katana_primitives::contract::{ContractAddress, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, StorageKey, StorageValue};
 use katana_provider::providers::fork::ForkedProvider;
 use katana_provider::providers::in_memory::InMemoryProvider;
 use katana_provider::traits::state::{StateFactoryProvider, StateProvider};
@@ -13,7 +13,7 @@ use starknet::macros::felt;
 
 fn assert_state_provider_storage(
     state_provider: Box<dyn StateProvider>,
-    expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+    expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
 ) -> Result<()> {
     for (address, key, expected_value) in expected_storage_entry {
         let actual_value = state_provider.storage(address, key)?;
@@ -30,7 +30,7 @@ mod latest {
 
     fn assert_latest_storage_value<Db: StateFactoryProvider>(
         provider: BlockchainProvider<Db>,
-        expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+        expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
     ) -> Result<()> {
         let state_provider = provider.latest()?;
         assert_state_provider_storage(state_provider, expected_storage_entry)
@@ -40,11 +40,11 @@ mod latest {
     #[rstest::rstest]
     #[case(
         vec![
-            (ContractAddress::from(felt!("1")), felt!("1"), Some(felt!("111"))),
-            (ContractAddress::from(felt!("1")), felt!("2"), Some(felt!("222"))),
-            (ContractAddress::from(felt!("1")), felt!("3"), Some(felt!("77"))),
-            (ContractAddress::from(felt!("2")), felt!("1"), Some(felt!("12"))),
-            (ContractAddress::from(felt!("2")), felt!("2"), Some(felt!("13")))
+            (Address::from(felt!("1")), felt!("1"), Some(felt!("111"))),
+            (Address::from(felt!("1")), felt!("2"), Some(felt!("222"))),
+            (Address::from(felt!("1")), felt!("3"), Some(felt!("77"))),
+            (Address::from(felt!("2")), felt!("1"), Some(felt!("12"))),
+            (Address::from(felt!("2")), felt!("2"), Some(felt!("13")))
         ]
     )]
     fn test_latest_storage_read<Db>(
@@ -56,7 +56,7 @@ mod latest {
     #[apply(test_latest_storage_read)]
     fn read_storage_from_in_memory_provider(
         #[with(in_memory_provider())] provider: BlockchainProvider<InMemoryProvider>,
-        #[case] expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+        #[case] expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
     ) -> Result<()> {
         assert_latest_storage_value(provider, expected_storage_entry)
     }
@@ -66,7 +66,7 @@ mod latest {
         #[with(fork_provider_with_spawned_fork_network::default())] provider: BlockchainProvider<
             ForkedProvider,
         >,
-        #[case] expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+        #[case] expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
     ) -> Result<()> {
         assert_latest_storage_value(provider, expected_storage_entry)
     }
@@ -74,7 +74,7 @@ mod latest {
     #[apply(test_latest_storage_read)]
     fn read_storage_from_db_provider(
         #[with(db_provider())] provider: BlockchainProvider<DbProvider>,
-        #[case] expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+        #[case] expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
     ) -> Result<()> {
         assert_latest_storage_value(provider, expected_storage_entry)
     }
@@ -89,7 +89,7 @@ mod historical {
     fn assert_historical_storage_value<Db: StateFactoryProvider>(
         provider: BlockchainProvider<Db>,
         block_num: BlockNumber,
-        expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+        expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
     ) -> Result<()> {
         let state_provider = provider
             .historical(BlockHashOrNumber::Num(block_num))?
@@ -104,38 +104,38 @@ mod historical {
     #[case::storage_at_block_0(
         0,
         vec![
-            (ContractAddress::from(felt!("1")), felt!("1"), None),
-            (ContractAddress::from(felt!("1")), felt!("2"), None),
-            (ContractAddress::from(felt!("2")), felt!("1"), None),
-            (ContractAddress::from(felt!("2")), felt!("2"), None)
+            (Address::from(felt!("1")), felt!("1"), None),
+            (Address::from(felt!("1")), felt!("2"), None),
+            (Address::from(felt!("2")), felt!("1"), None),
+            (Address::from(felt!("2")), felt!("2"), None)
         ])
     ]
     #[case::storage_at_block_1(
         1,
         vec![
-            (ContractAddress::from(felt!("1")), felt!("1"), Some(felt!("100"))),
-            (ContractAddress::from(felt!("1")), felt!("2"), Some(felt!("101"))),
-            (ContractAddress::from(felt!("2")), felt!("1"), Some(felt!("200"))),
-            (ContractAddress::from(felt!("2")), felt!("2"), Some(felt!("201"))),
+            (Address::from(felt!("1")), felt!("1"), Some(felt!("100"))),
+            (Address::from(felt!("1")), felt!("2"), Some(felt!("101"))),
+            (Address::from(felt!("2")), felt!("1"), Some(felt!("200"))),
+            (Address::from(felt!("2")), felt!("2"), Some(felt!("201"))),
         ])
     ]
     #[case::storage_at_block_4(
         4,
         vec![
-            (ContractAddress::from(felt!("1")), felt!("1"), Some(felt!("111"))),
-            (ContractAddress::from(felt!("1")), felt!("2"), Some(felt!("222"))),
-            (ContractAddress::from(felt!("2")), felt!("1"), Some(felt!("200"))),
-            (ContractAddress::from(felt!("2")), felt!("2"), Some(felt!("201"))),
+            (Address::from(felt!("1")), felt!("1"), Some(felt!("111"))),
+            (Address::from(felt!("1")), felt!("2"), Some(felt!("222"))),
+            (Address::from(felt!("2")), felt!("1"), Some(felt!("200"))),
+            (Address::from(felt!("2")), felt!("2"), Some(felt!("201"))),
         ])
     ]
     #[case::storage_at_block_5(
         5,
         vec![
-            (ContractAddress::from(felt!("1")), felt!("1"), Some(felt!("111"))),
-            (ContractAddress::from(felt!("1")), felt!("2"), Some(felt!("222"))),
-            (ContractAddress::from(felt!("1")), felt!("3"), Some(felt!("77"))),
-            (ContractAddress::from(felt!("2")), felt!("1"), Some(felt!("12"))),
-            (ContractAddress::from(felt!("2")), felt!("2"), Some(felt!("13"))),
+            (Address::from(felt!("1")), felt!("1"), Some(felt!("111"))),
+            (Address::from(felt!("1")), felt!("2"), Some(felt!("222"))),
+            (Address::from(felt!("1")), felt!("3"), Some(felt!("77"))),
+            (Address::from(felt!("2")), felt!("1"), Some(felt!("12"))),
+            (Address::from(felt!("2")), felt!("2"), Some(felt!("13"))),
         ])
     ]
     fn test_historical_storage_read(
@@ -149,7 +149,7 @@ mod historical {
     fn read_storage_from_in_memory_provider(
         #[with(in_memory_provider())] provider: BlockchainProvider<InMemoryProvider>,
         #[case] block_num: BlockNumber,
-        #[case] expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+        #[case] expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
     ) -> Result<()> {
         assert_historical_storage_value(provider, block_num, expected_storage_entry)
     }
@@ -160,7 +160,7 @@ mod historical {
             ForkedProvider,
         >,
         #[case] block_num: BlockNumber,
-        #[case] expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+        #[case] expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
     ) -> Result<()> {
         assert_historical_storage_value(provider, block_num, expected_storage_entry)
     }
@@ -169,7 +169,7 @@ mod historical {
     fn read_storage_from_db_provider(
         #[with(db_provider())] provider: BlockchainProvider<DbProvider>,
         #[case] block_num: BlockNumber,
-        #[case] expected_storage_entry: Vec<(ContractAddress, StorageKey, Option<StorageValue>)>,
+        #[case] expected_storage_entry: Vec<(Address, StorageKey, Option<StorageValue>)>,
     ) -> Result<()> {
         assert_historical_storage_value(provider, block_num, expected_storage_entry)
     }

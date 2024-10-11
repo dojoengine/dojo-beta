@@ -1,6 +1,6 @@
 use starknet::core::crypto::compute_hash_on_elements;
 
-use crate::contract::ContractAddress;
+use crate::contract::Address;
 use crate::transaction::{ExecutableTxWithHash, TxHash, TxWithHash};
 use crate::version::Version;
 use crate::Felt;
@@ -36,7 +36,7 @@ pub struct PartialHeader {
     pub parent_hash: Felt,
     pub gas_prices: GasPrices,
     pub timestamp: u64,
-    pub sequencer_address: ContractAddress,
+    pub sequencer_address: Address,
     pub version: Version,
 }
 
@@ -67,7 +67,7 @@ pub struct Header {
     pub gas_prices: GasPrices,
     pub timestamp: u64,
     pub state_root: Felt,
-    pub sequencer_address: ContractAddress,
+    pub sequencer_address: Address,
     pub version: Version,
 }
 

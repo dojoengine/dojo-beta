@@ -1,6 +1,6 @@
 use crate::block::{BlockNumber, GasPrices};
 use crate::chain::ChainId;
-use crate::contract::ContractAddress;
+use crate::contract::Address;
 
 /// Block environment values.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -12,7 +12,7 @@ pub struct BlockEnv {
     /// The L1 gas prices at this particular block.
     pub l1_gas_prices: GasPrices,
     /// The contract address of the sequencer.
-    pub sequencer_address: ContractAddress,
+    pub sequencer_address: Address,
 }
 
 /// The chain block execution configuration values.
@@ -34,7 +34,7 @@ pub struct CfgEnv {
 #[derive(Debug, Clone, Default)]
 pub struct FeeTokenAddressses {
     /// The contract address of the `STRK` token.
-    pub strk: ContractAddress,
+    pub strk: Address,
     /// The contract address of the `ETH` token.
-    pub eth: ContractAddress,
+    pub eth: Address,
 }

@@ -40,7 +40,7 @@ use super::constant::{
 use super::{FeeTokenConfig, Genesis, GenesisAllocation, UniversalDeployerConfig};
 use crate::block::{BlockHash, BlockNumber, GasPrices};
 use crate::class::{ClassHash, CompiledClass, SierraClass};
-use crate::contract::{ContractAddress, StorageKey, StorageValue};
+use crate::contract::{Address, StorageKey, StorageValue};
 use crate::genesis::GenesisClass;
 use crate::utils::class::{parse_compiled_class_v1, parse_deprecated_compiled_class};
 use crate::Felt;
@@ -155,7 +155,7 @@ impl<'de> Deserialize<'de> for ClassNameOrHash {
 pub struct FeeTokenConfigJson {
     pub name: String,
     pub symbol: String,
-    pub address: Option<ContractAddress>,
+    pub address: Option<Address>,
     pub decimals: u8,
     /// The class hash of the fee token contract.
     /// If not provided, the default fee token class is used.
@@ -168,7 +168,7 @@ pub struct FeeTokenConfigJson {
 pub struct UniversalDeployerConfigJson {
     /// The address of the universal deployer contract.
     /// If not provided, the default UD address is used.
-    pub address: Option<ContractAddress>,
+    pub address: Option<Address>,
     /// The class hash of the universal deployer contract.
     /// If not provided, the default UD class is used.
     pub class: Option<ClassNameOrHash>,
@@ -260,16 +260,16 @@ pub struct GenesisJson {
     pub state_root: Felt,
     pub number: BlockNumber,
     pub timestamp: u64,
-    pub sequencer_address: ContractAddress,
+    pub sequencer_address: Address,
     pub gas_prices: GasPrices,
     #[serde(default)]
     pub classes: Vec<GenesisClassJson>,
     pub fee_token: FeeTokenConfigJson,
     pub universal_deployer: Option<UniversalDeployerConfigJson>,
     #[serde(default)]
-    pub accounts: BTreeMap<ContractAddress, GenesisAccountJson>,
+    pub accounts: BTreeMap<Address, GenesisAccountJson>,
     #[serde(default)]
-    pub contracts: BTreeMap<ContractAddress, GenesisContractJson>,
+    pub contracts: BTreeMap<Address, GenesisContractJson>,
 }
 
 impl GenesisJson {
@@ -495,7 +495,7 @@ impl TryFrom<GenesisJson> for Genesis {
             None
         };
 
-        let mut allocations: BTreeMap<ContractAddress, GenesisAllocation> = BTreeMap::new();
+        let mut allocations: BTreeMap<Address, GenesisAllocation> = BTreeMap::new();
 
         for (address, account) in value.accounts {
             // check that the class hash exists in the classes field
@@ -691,7 +691,7 @@ mod tests {
         assert_eq!(json.gas_prices.eth, 1111);
         assert_eq!(json.gas_prices.strk, 2222);
 
-        assert_eq!(json.fee_token.address, Some(address!("0x55")));
+        assert_eq!(json.fee_token.address, Some(address!(crate, "0x55")));
         assert_eq!(json.fee_token.name, String::from("ETHER"));
         assert_eq!(json.fee_token.symbol, String::from("ETH"));
         assert_eq!(json.fee_token.class, Some(ClassNameOrHash::Name(String::from("MyErc20"))));
@@ -703,7 +703,10 @@ mod tests {
 
         assert_eq!(
             json.universal_deployer.clone().unwrap().address,
-            Some(address!("0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf"))
+            Some(address!(
+                crate,
+                "0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf"
+            ))
         );
         assert_eq!(json.universal_deployer.unwrap().class, None);
         assert_eq!(
@@ -711,10 +714,14 @@ mod tests {
             Some(BTreeMap::from([(felt!("0x111"), felt!("0x1")), (felt!("0x222"), felt!("0x2")),]))
         );
 
-        let acc_1 = address!("0x66efb28ac62686966ae85095ff3a772e014e7fbf56d4c5f6fac5606d4dde23a");
-        let acc_2 = address!("0x6b86e40118f29ebe393a75469b4d926c7a44c2e2681b6d319520b7c1156d114");
-        let acc_3 = address!("0x79156ecb3d8f084001bb498c95e37fa1c4b40dbb35a3ae47b77b1ad535edcb9");
-        let acc_4 = address!("0x053a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf");
+        let acc_1 =
+            address!(crate, "0x66efb28ac62686966ae85095ff3a772e014e7fbf56d4c5f6fac5606d4dde23a");
+        let acc_2 =
+            address!(crate, "0x6b86e40118f29ebe393a75469b4d926c7a44c2e2681b6d319520b7c1156d114");
+        let acc_3 =
+            address!(crate, "0x79156ecb3d8f084001bb498c95e37fa1c4b40dbb35a3ae47b77b1ad535edcb9");
+        let acc_4 =
+            address!(crate, "0x053a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf");
 
         assert_eq!(json.accounts.len(), 4);
 
@@ -758,11 +765,11 @@ mod tests {
         assert_eq!(json.contracts.len(), 3);
 
         let contract_1 =
-            address!("0x29873c310fbefde666dc32a1554fea6bb45eecc84f680f8a2b0a8fbb8cb89af");
+            address!(crate, "0x29873c310fbefde666dc32a1554fea6bb45eecc84f680f8a2b0a8fbb8cb89af");
         let contract_2 =
-            address!("0xe29882a1fcba1e7e10cad46212257fea5c752a4f9b1b1ec683c503a2cf5c8a");
+            address!(crate, "0xe29882a1fcba1e7e10cad46212257fea5c752a4f9b1b1ec683c503a2cf5c8a");
         let contract_3 =
-            address!("0x05400e90f7e0ae78bd02c77cd75527280470e2fe19c54970dd79dc37a9d3645c");
+            address!(crate, "0x05400e90f7e0ae78bd02c77cd75527280470e2fe19c54970dd79dc37a9d3645c");
 
         assert_eq!(
             json.contracts[&contract_1].balance,
@@ -912,7 +919,7 @@ mod tests {
         ]);
 
         let expected_fee_token = FeeTokenConfig {
-            address: address!("0x55"),
+            address: address!(crate, "0x55"),
             name: String::from("ETHER"),
             symbol: String::from("ETH"),
             decimals: 18,
@@ -1190,12 +1197,10 @@ mod tests {
     fn genesis_from_json_with_unresolved_paths() {
         let file = File::open("./src/genesis/test-genesis.json").unwrap();
         let json: GenesisJson = serde_json::from_reader(file).unwrap();
-        assert!(
-            Genesis::try_from(json)
-                .unwrap_err()
-                .to_string()
-                .contains("Unresolved class artifact path")
-        );
+        assert!(Genesis::try_from(json)
+            .unwrap_err()
+            .to_string()
+            .contains("Unresolved class artifact path"));
     }
 
     #[test]
@@ -1239,8 +1244,9 @@ mod tests {
             .expect("failed to load genesis file");
 
         let res = Genesis::try_from(json);
-        assert!(
-            res.unwrap_err().to_string().contains(&format!("Class name '{name}' already exists"))
-        )
+        assert!(res
+            .unwrap_err()
+            .to_string()
+            .contains(&format!("Class name '{name}' already exists")))
     }
 }

@@ -12,7 +12,7 @@ use starknet::signers::SigningKey;
 
 use super::constant::DEFAULT_OZ_ACCOUNT_CONTRACT_CLASS_HASH;
 use crate::class::ClassHash;
-use crate::contract::{ContractAddress, StorageKey, StorageValue};
+use crate::contract::{Address, StorageKey, StorageValue};
 use crate::Felt;
 
 /// Represents a contract allocation in the genesis block.
@@ -156,7 +156,7 @@ pub struct DevGenesisAccount {
 
 impl DevGenesisAccount {
     /// Creates a new dev account with the given `private_key` and `class_hash`.
-    pub fn new(private_key: Felt, class_hash: ClassHash) -> (ContractAddress, Self) {
+    pub fn new(private_key: Felt, class_hash: ClassHash) -> (Address, Self) {
         let public_key = public_key_from_private_key(private_key);
         let (addr, inner) = GenesisAccount::new(public_key, class_hash);
         (addr, Self { private_key, inner })
@@ -167,7 +167,7 @@ impl DevGenesisAccount {
         private_key: Felt,
         class_hash: ClassHash,
         balance: U256,
-    ) -> (ContractAddress, Self) {
+    ) -> (Address, Self) {
         let (addr, mut account) = Self::new(private_key, class_hash);
         account.balance = Some(balance);
         (addr, account)
@@ -195,18 +195,18 @@ pub struct GenesisAccount {
 }
 
 impl GenesisAccount {
-    pub fn new(public_key: Felt, class_hash: ClassHash) -> (ContractAddress, Self) {
+    pub fn new(public_key: Felt, class_hash: ClassHash) -> (Address, Self) {
         let address =
             get_contract_address(Felt::from(666u32), class_hash, &[public_key], Felt::ZERO);
 
-        (ContractAddress::from(address), Self { public_key, class_hash, ..Default::default() })
+        (Address::from(address), Self { public_key, class_hash, ..Default::default() })
     }
 
     pub fn new_with_balance(
         public_key: Felt,
         class_hash: ClassHash,
         balance: U256,
-    ) -> (ContractAddress, Self) {
+    ) -> (Address, Self) {
         let (address, account) = Self::new(public_key, class_hash);
         (address, Self { balance: Some(balance), ..account })
     }
@@ -255,7 +255,7 @@ impl DevAllocationsGenerator {
 
     /// Generate `total` number of accounts based on the `seed`.
     #[must_use]
-    pub fn generate(&self) -> HashMap<ContractAddress, DevGenesisAccount> {
+    pub fn generate(&self) -> HashMap<Address, DevGenesisAccount> {
         let mut seed = self.seed;
         (0..self.total)
             .map(|_| {

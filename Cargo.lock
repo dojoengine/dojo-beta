@@ -8206,6 +8206,7 @@ dependencies = [
  "derive_more 0.99.18",
  "flate2",
  "katana-cairo",
+ "katana-primitives-macros",
  "lazy_static",
  "num-bigint",
  "num-traits 0.2.19",
@@ -8219,6 +8220,16 @@ dependencies = [
  "starknet-crypto 0.7.2",
  "strum_macros 0.25.3",
  "thiserror",
+]
+
+[[package]]
+name = "katana-primitives-macros"
+version = "1.0.0-alpha.15"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "starknet 0.12.0",
+ "syn 2.0.77",
 ]
 
 [[package]]

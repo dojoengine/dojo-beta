@@ -13,7 +13,7 @@ use futures::stream::Stream;
 use futures::{Future, FutureExt};
 use katana_primitives::block::BlockHashOrNumber;
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, Nonce, StorageKey, StorageValue};
 use katana_primitives::conversion::rpc::{
     compiled_class_hash_from_flattened_sierra_class, flattened_sierra_to_compiled_class,
     legacy_rpc_to_compiled_class,
@@ -63,10 +63,10 @@ struct Request<P, T> {
 /// Each request consists of a payload and the sender half of a oneshot channel that will be used
 /// to send the result back to the backend handle.
 enum BackendRequest {
-    Nonce(Request<ContractAddress, Nonce>),
+    Nonce(Request<Address, Nonce>),
     Class(Request<ClassHash, RpcContractClass>),
-    ClassHash(Request<ContractAddress, ClassHash>),
-    Storage(Request<(ContractAddress, StorageKey), StorageValue>),
+    ClassHash(Request<Address, ClassHash>),
+    Storage(Request<(Address, StorageKey), StorageValue>),
     // Test-only request kind for requesting the backend stats
     #[cfg(test)]
     Stats(OneshotSender<usize>),
@@ -74,7 +74,7 @@ enum BackendRequest {
 
 impl BackendRequest {
     /// Create a new request for fetching the nonce of a contract.
-    fn nonce(address: ContractAddress) -> (BackendRequest, OneshotReceiver<GetNonceResult>) {
+    fn nonce(address: Address) -> (BackendRequest, OneshotReceiver<GetNonceResult>) {
         let (sender, receiver) = oneshot();
         (BackendRequest::Nonce(Request { payload: address, sender }), receiver)
     }
@@ -86,16 +86,14 @@ impl BackendRequest {
     }
 
     /// Create a new request for fetching the class hash of a contract.
-    fn class_hash(
-        address: ContractAddress,
-    ) -> (BackendRequest, OneshotReceiver<GetClassHashAtResult>) {
+    fn class_hash(address: Address) -> (BackendRequest, OneshotReceiver<GetClassHashAtResult>) {
         let (sender, receiver) = oneshot();
         (BackendRequest::ClassHash(Request { payload: address, sender }), receiver)
     }
 
     /// Create a new request for fetching the storage value of a contract.
     fn storage(
-        address: ContractAddress,
+        address: Address,
         key: StorageKey,
     ) -> (BackendRequest, OneshotReceiver<GetStorageResult>) {
         let (sender, receiver) = oneshot();
@@ -305,7 +303,7 @@ impl Clone for BackendHandle {
 }
 
 impl BackendHandle {
-    pub fn get_nonce(&self, address: ContractAddress) -> Result<Nonce, BackendError> {
+    pub fn get_nonce(&self, address: Address) -> Result<Nonce, BackendError> {
         trace!(target: LOG_TARGET, %address, "Requesting contract nonce.");
         let (req, rx) = BackendRequest::nonce(address);
         self.request(req)?;
@@ -314,7 +312,7 @@ impl BackendHandle {
 
     pub fn get_storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         key: StorageKey,
     ) -> Result<StorageValue, BackendError> {
         trace!(target: LOG_TARGET, %address, key = %format!("{key:#x}"), "Requesting contract storage.");
@@ -323,7 +321,7 @@ impl BackendHandle {
         rx.recv()?
     }
 
-    pub fn get_class_hash_at(&self, address: ContractAddress) -> Result<ClassHash, BackendError> {
+    pub fn get_class_hash_at(&self, address: Address) -> Result<ClassHash, BackendError> {
         trace!(target: LOG_TARGET, %address, "Requesting contract class hash.");
         let (req, rx) = BackendRequest::class_hash(address);
         self.request(req)?;
@@ -383,7 +381,7 @@ impl SharedStateProvider {
 }
 
 impl StateProvider for SharedStateProvider {
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         // TEMP:
         //
         // The nonce and class hash are stored in the same struct, so if we call either `nonce` or
@@ -424,7 +422,7 @@ impl StateProvider for SharedStateProvider {
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         if let value @ Some(_) =
@@ -449,10 +447,7 @@ impl StateProvider for SharedStateProvider {
         Ok(value)
     }
 
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         // See comment at `nonce` for the explanation of this filter.
         if let hash @ Some(_) = self
             .0
@@ -656,7 +651,7 @@ mod tests {
     const LOCAL_RPC_URL: &str = "http://localhost:5050";
 
     const STORAGE_KEY: StorageKey = felt!("0x1");
-    const ADDR_1: ContractAddress = ContractAddress(felt!("0xADD1"));
+    const ADDR_1: Address = Address(felt!("0xADD1"));
     const ADDR_1_NONCE: Nonce = felt!("0x1");
     const ADDR_1_STORAGE_VALUE: StorageKey = felt!("0x8080");
     const ADDR_1_CLASS_HASH: StorageKey = felt!("0x1");
@@ -749,9 +744,8 @@ mod tests {
     const FORKED_URL: &str =
         "https://starknet-goerli.infura.io/v3/369ce5ac40614952af936e4d64e40474";
 
-    const GOERLI_CONTRACT_ADDR: ContractAddress = ContractAddress(felt!(
-        "0x02b92ec12cA1e308f320e99364d4dd8fcc9efDAc574F836C8908de937C289974"
-    ));
+    const GOERLI_CONTRACT_ADDR: Address =
+        Address(felt!("0x02b92ec12cA1e308f320e99364d4dd8fcc9efDAc574F836C8908de937C289974"));
     const GOERLI_CONTRACT_STORAGE_KEY: StorageKey =
         felt!("0x3b459c3fadecdb1a501f2fdeec06fd735cb2d93ea59779177a0981660a85352");
 

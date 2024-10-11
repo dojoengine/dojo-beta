@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use fixtures::{state_provider, valid_blocks};
 use katana_executor::{ExecutionOutput, ExecutionResult, ExecutorFactory};
 use katana_primitives::block::ExecutableBlock;
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::genesis::constant::{
     DEFAULT_FEE_TOKEN_ADDRESS, DEFAULT_LEGACY_ERC20_CONTRACT_CLASS_HASH,
     DEFAULT_OZ_ACCOUNT_CONTRACT_CLASS_HASH, DEFAULT_PREFUNDED_ACCOUNT_BALANCE, DEFAULT_UDC_ADDRESS,
@@ -54,7 +54,11 @@ fn test_executor_with_valid_blocks_impl<EF: ExecutorFactory>(
 
     // ensure that all transactions succeeded, if not panic with the error message and tx index
     let has_failed = transactions.iter().enumerate().find_map(|(i, (_, res))| {
-        if let ExecutionResult::Failed { error } = res { Some((i, error)) } else { None }
+        if let ExecutionResult::Failed { error } = res {
+            Some((i, error))
+        } else {
+            None
+        }
     });
 
     if let Some((pos, error)) = has_failed {

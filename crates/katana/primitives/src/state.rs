@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use crate::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
+use crate::contract::{Address, Nonce, StorageKey, StorageValue};
 
 /// State updates.
 ///
@@ -10,18 +10,18 @@ use crate::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct StateUpdates {
     /// A mapping of contract addresses to their updated nonces.
-    pub nonce_updates: BTreeMap<ContractAddress, Nonce>,
+    pub nonce_updates: BTreeMap<Address, Nonce>,
     /// A mapping of contract addresses to their updated storage entries.
-    pub storage_updates: BTreeMap<ContractAddress, BTreeMap<StorageKey, StorageValue>>,
+    pub storage_updates: BTreeMap<Address, BTreeMap<StorageKey, StorageValue>>,
     /// A mapping of contract addresses to their updated class hashes.
-    pub deployed_contracts: BTreeMap<ContractAddress, ClassHash>,
+    pub deployed_contracts: BTreeMap<Address, ClassHash>,
     /// A mapping of newly declared class hashes to their compiled class hashes.
     pub declared_classes: BTreeMap<ClassHash, CompiledClassHash>,
     /// A mapping of newly declared legacy class hashes.
     pub deprecated_declared_classes: BTreeSet<ClassHash>,
     /// A mapping of replaced contract addresses to their new class hashes ie using `replace_class`
     /// syscall.
-    pub replaced_classes: BTreeMap<ContractAddress, ClassHash>,
+    pub replaced_classes: BTreeMap<Address, ClassHash>,
 }
 
 /// State update with declared classes definition.

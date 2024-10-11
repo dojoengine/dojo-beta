@@ -4,7 +4,7 @@ use anyhow::Result;
 use derive_more::Deref;
 use katana_primitives::chain::ChainId;
 use katana_primitives::class::ClassHash;
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::conversion::rpc::{
     compiled_class_hash_from_flattened_sierra_class, flattened_sierra_to_compiled_class,
     legacy_rpc_to_compiled_class,
@@ -384,7 +384,7 @@ impl From<TxWithHash> for Tx {
 }
 
 impl DeployAccountTxResult {
-    pub fn new(transaction_hash: TxHash, contract_address: ContractAddress) -> Self {
+    pub fn new(transaction_hash: TxHash, contract_address: Address) -> Self {
         Self(DeployAccountTransactionResult {
             transaction_hash,
             contract_address: contract_address.into(),
@@ -404,8 +404,8 @@ impl InvokeTxResult {
     }
 }
 
-impl From<(TxHash, ContractAddress)> for DeployAccountTxResult {
-    fn from((transaction_hash, contract_address): (TxHash, ContractAddress)) -> Self {
+impl From<(TxHash, Address)> for DeployAccountTxResult {
+    fn from((transaction_hash, contract_address): (TxHash, Address)) -> Self {
         Self::new(transaction_hash, contract_address)
     }
 }

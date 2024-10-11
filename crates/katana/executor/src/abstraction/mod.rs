@@ -4,7 +4,7 @@ mod executor;
 pub use error::*;
 pub use executor::*;
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, Nonce, StorageKey, StorageValue};
 use katana_primitives::receipt::Receipt;
 use katana_primitives::state::{StateUpdates, StateUpdatesWithDeclaredClasses};
 use katana_primitives::trace::TxExecInfo;
@@ -94,7 +94,7 @@ pub struct ExecutionOutput {
 #[derive(Debug)]
 pub struct EntryPointCall {
     /// The address of the contract whose function you're calling.
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
     /// The input to the function.
     pub calldata: Vec<Felt>,
     /// The contract function name.
@@ -175,20 +175,17 @@ impl<'a> ContractClassProvider for StateProviderDb<'a> {
 }
 
 impl<'a> StateProvider for StateProviderDb<'a> {
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         self.0.class_hash_of_contract(address)
     }
 
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         self.0.nonce(address)
     }
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         self.0.storage(address, storage_key)

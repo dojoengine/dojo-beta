@@ -1,5 +1,5 @@
 use katana_primitives::class::ClassHash;
-use katana_primitives::contract::{ContractAddress, Nonce};
+use katana_primitives::contract::{Address, Nonce};
 use katana_primitives::Felt;
 
 /// Errors that can be returned by the executor.
@@ -25,7 +25,7 @@ pub enum ExecutionError {
     RecursionDepthExceeded,
 
     #[error("Contract with address {0} is not deployed")]
-    ContractNotDeployed(ContractAddress),
+    ContractNotDeployed(Address),
 
     // The error message is the exact copy of the one defined by blockifier but without using
     // Debug formatting for the struct fields.
@@ -35,7 +35,7 @@ pub enum ExecutionError {
     )]
     InvalidNonce {
         /// The address of the account contract.
-        address: ContractAddress,
+        address: Address,
         /// The current nonce of the account.
         current_nonce: Nonce,
         /// The nonce of the incoming transaction.

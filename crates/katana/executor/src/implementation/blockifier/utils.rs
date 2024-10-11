@@ -431,7 +431,7 @@ pub(super) fn state_update_from_cached_state<S: StateDb>(
             .into_iter()
             .map(|(key, value)| (to_address(key), value.0))
             .collect::<BTreeMap<
-                katana_primitives::contract::ContractAddress,
+                katana_primitives::contract::Address,
                 katana_primitives::contract::Nonce,
             >>();
 
@@ -453,7 +453,7 @@ pub(super) fn state_update_from_cached_state<S: StateDb>(
             .into_iter()
             .map(|(key, value)| (to_address(key), value.0))
             .collect::<BTreeMap<
-                katana_primitives::contract::ContractAddress,
+                katana_primitives::contract::Address,
                 katana_primitives::class::ClassHash,
             >>();
 
@@ -512,12 +512,12 @@ fn get_fee_type_from_tx(transaction: &Transaction) -> FeeType {
     }
 }
 
-pub fn to_blk_address(address: katana_primitives::contract::ContractAddress) -> ContractAddress {
+pub fn to_blk_address(address: katana_primitives::contract::Address) -> ContractAddress {
     address.0.try_into().expect("valid address")
 }
 
-pub fn to_address(address: ContractAddress) -> katana_primitives::contract::ContractAddress {
-    katana_primitives::contract::ContractAddress(*address.0.key())
+pub fn to_address(address: ContractAddress) -> katana_primitives::contract::Address {
+    katana_primitives::contract::Address(*address.0.key())
 }
 
 pub fn to_blk_chain_id(chain_id: katana_primitives::chain::ChainId) -> ChainId {
@@ -647,7 +647,7 @@ fn to_ordered_event(e: OrderedEvent) -> event::OrderedEvent {
 
 fn to_l2_l1_messages(
     m: OrderedL2ToL1Message,
-    from_address: katana_primitives::contract::ContractAddress,
+    from_address: katana_primitives::contract::Address,
 ) -> message::OrderedL2ToL1Message {
     let order = m.order as u64;
     let payload = m.message.payload.0;

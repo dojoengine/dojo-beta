@@ -4,15 +4,15 @@ use std::sync::Arc;
 use katana_db::models::block::StoredBlockBodyIndices;
 use katana_primitives::block::{BlockHash, BlockNumber, FinalityStatus, Header};
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, GenericContractInfo, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, GenericContractInfo, StorageKey, StorageValue};
 use katana_primitives::receipt::Receipt;
 use katana_primitives::state::{StateUpdates, StateUpdatesWithDeclaredClasses};
 use katana_primitives::trace::TxExecInfo;
 use katana_primitives::transaction::{Tx, TxHash, TxNumber};
 use parking_lot::RwLock;
 
-type ContractStorageMap = HashMap<ContractAddress, HashMap<StorageKey, StorageValue>>;
-type ContractStateMap = HashMap<ContractAddress, GenericContractInfo>;
+type ContractStorageMap = HashMap<Address, HashMap<StorageKey, StorageValue>>;
+type ContractStateMap = HashMap<Address, GenericContractInfo>;
 
 type SierraClassesMap = HashMap<ClassHash, FlattenedSierraClass>;
 type CompiledClassesMap = HashMap<ClassHash, CompiledClass>;

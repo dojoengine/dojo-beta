@@ -13,7 +13,7 @@ use katana_executor::implementation::blockifier::utils::{
     block_context_from_envs, to_address, to_executor_tx,
 };
 use katana_executor::{SimulationFlag, StateProviderDb};
-use katana_primitives::contract::{ContractAddress, Nonce};
+use katana_primitives::contract::{Address, Nonce};
 use katana_primitives::env::{BlockEnv, CfgEnv};
 use katana_primitives::transaction::{ExecutableTx, ExecutableTxWithHash};
 use katana_primitives::Felt;
@@ -38,7 +38,7 @@ struct Inner {
     execution_flags: SimulationFlag,
     state: Arc<Box<dyn StateProvider>>,
 
-    pool_nonces: HashMap<ContractAddress, Nonce>,
+    pool_nonces: HashMap<Address, Nonce>,
 }
 
 impl TxValidator {
@@ -72,7 +72,7 @@ impl TxValidator {
     // unwraps the Option to get the state of the TransactionExecutor struct. StatefulValidator
     // guaranteees that the state will always be present so it is safe to uwnrap. However, this
     // safety is not guaranteed by TransactionExecutor itself.
-    pub fn pool_nonce(&self, address: ContractAddress) -> Result<Option<Nonce>, ProviderError> {
+    pub fn pool_nonce(&self, address: Address) -> Result<Option<Nonce>, ProviderError> {
         let this = self.inner.lock();
         match this.pool_nonces.get(&address) {
             Some(nonce) => Ok(Some(*nonce)),

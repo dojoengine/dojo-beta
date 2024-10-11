@@ -30,7 +30,7 @@ use self::constant::{
 };
 use crate::block::{Block, BlockHash, BlockNumber, GasPrices, Header};
 use crate::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use crate::contract::{ContractAddress, StorageKey, StorageValue};
+use crate::contract::{Address, StorageKey, StorageValue};
 use crate::state::StateUpdatesWithDeclaredClasses;
 use crate::utils::split_u256;
 use crate::version::CURRENT_STARKNET_VERSION;
@@ -44,7 +44,7 @@ pub struct FeeTokenConfig {
     /// The symbol of the fee token.
     pub symbol: String,
     /// The address of the fee token contract.
-    pub address: ContractAddress,
+    pub address: Address,
     /// The decimals of the fee token.
     pub decimals: u8,
     /// The class hash of the fee token contract.
@@ -74,7 +74,7 @@ pub struct UniversalDeployerConfig {
     /// The class hash of the universal deployer contract.
     pub class_hash: ClassHash,
     /// The address of the universal deployer contract.
-    pub address: ContractAddress,
+    pub address: Address,
     /// To initialize the UD contract storage
     pub storage: Option<BTreeMap<StorageKey, StorageValue>>,
 }
@@ -94,7 +94,7 @@ pub struct Genesis {
     /// The genesis block timestamp.
     pub timestamp: u64,
     /// The genesis block sequencer address.
-    pub sequencer_address: ContractAddress,
+    pub sequencer_address: Address,
     /// The genesis block L1 gas prices.
     pub gas_prices: GasPrices,
     /// The classes to declare in the genesis block.
@@ -104,14 +104,14 @@ pub struct Genesis {
     /// The universal deployer (UDC) configuration.
     pub universal_deployer: Option<UniversalDeployerConfig>,
     /// The genesis contract allocations.
-    pub allocations: BTreeMap<ContractAddress, GenesisAllocation>,
+    pub allocations: BTreeMap<Address, GenesisAllocation>,
 }
 
 impl Genesis {
     /// Extends the genesis allocations with the given allocations.
     pub fn extend_allocations<T>(&mut self, allocs: T)
     where
-        T: IntoIterator<Item = (ContractAddress, GenesisAllocation)>,
+        T: IntoIterator<Item = (Address, GenesisAllocation)>,
     {
         self.allocations.extend(allocs);
     }
@@ -129,7 +129,7 @@ impl Genesis {
 
     /// Returns an iterator over the genesis accounts. This will only return
     /// allocated account contracts.
-    pub fn accounts(&self) -> impl Iterator<Item = (&ContractAddress, &GenesisAccountAlloc)> {
+    pub fn accounts(&self) -> impl Iterator<Item = (&Address, &GenesisAccountAlloc)> {
         self.allocations.iter().filter_map(|(addr, alloc)| {
             if let GenesisAllocation::Account(account) = alloc {
                 Some((addr, account))

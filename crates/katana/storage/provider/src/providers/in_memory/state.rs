@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use katana_primitives::block::BlockNumber;
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, Nonce, StorageKey, StorageValue};
 
 use super::cache::{CacheSnapshotWithoutClasses, CacheStateDb, SharedContractClasses};
 use crate::traits::contract::ContractClassProvider;
@@ -118,24 +118,21 @@ impl InMemoryStateDb {
 }
 
 impl StateProvider for InMemorySnapshot {
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         let nonce = self.inner.contract_state.get(&address).map(|i| i.nonce);
         Ok(nonce)
     }
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         let value = self.inner.storage.get(&address).and_then(|s| s.get(&storage_key)).copied();
         Ok(value)
     }
 
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         let class_hash = self.inner.contract_state.get(&address).map(|i| i.class_hash);
         Ok(class_hash)
     }
@@ -171,24 +168,21 @@ impl ContractClassProvider for InMemorySnapshot {
 pub(super) struct LatestStateProvider(pub(super) Arc<InMemoryStateDb>);
 
 impl StateProvider for LatestStateProvider {
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         let nonce = self.0.contract_state.read().get(&address).map(|i| i.nonce);
         Ok(nonce)
     }
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         let value = self.0.storage.read().get(&address).and_then(|s| s.get(&storage_key)).copied();
         Ok(value)
     }
 
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         let class_hash = self.0.contract_state.read().get(&address).map(|i| i.class_hash);
         Ok(class_hash)
     }
@@ -226,7 +220,7 @@ mod tests {
 
     const STORAGE_KEY: StorageKey = felt!("0x1");
 
-    const ADDR_1: ContractAddress = ContractAddress(felt!("0xADD1"));
+    const ADDR_1: Address = Address(felt!("0xADD1"));
     const ADDR_1_STORAGE_VALUE_AT_1: StorageKey = felt!("0x8080");
     const ADDR_1_STORAGE_VALUE_AT_2: StorageKey = felt!("0x1212");
     const ADDR_1_STORAGE_VALUE_AT_3: StorageKey = felt!("0x3434");
@@ -236,7 +230,7 @@ mod tests {
     const ADDR_1_NONCE_AT_2: Nonce = felt!("0x2");
     const ADDR_1_NONCE_AT_3: Nonce = felt!("0x3");
 
-    const ADDR_2: ContractAddress = ContractAddress(felt!("0xADD2"));
+    const ADDR_2: Address = Address(felt!("0xADD2"));
     const ADDR_2_STORAGE_VALUE_AT_1: StorageKey = felt!("0x9090");
     const ADDR_2_STORAGE_VALUE_AT_2: StorageKey = felt!("1313");
     const ADDR_2_STORAGE_VALUE_AT_3: StorageKey = felt!("5555");

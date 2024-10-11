@@ -6,7 +6,7 @@ use katana_primitives::block::{
     SealedBlockWithStatus,
 };
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, StorageKey, StorageValue};
 use katana_primitives::env::BlockEnv;
 use katana_primitives::receipt::Receipt;
 use katana_primitives::state::{StateUpdates, StateUpdatesWithDeclaredClasses};
@@ -242,23 +242,20 @@ where
 {
     fn nonce(
         &self,
-        address: ContractAddress,
+        address: Address,
     ) -> ProviderResult<Option<katana_primitives::contract::Nonce>> {
         self.provider.nonce(address)
     }
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         self.provider.storage(address, storage_key)
     }
 
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         self.provider.class_hash_of_contract(address)
     }
 }
@@ -348,7 +345,7 @@ where
 {
     fn set_storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
         storage_value: StorageValue,
     ) -> ProviderResult<()> {
@@ -357,7 +354,7 @@ where
 
     fn set_class_hash_of_contract(
         &self,
-        address: ContractAddress,
+        address: Address,
         class_hash: ClassHash,
     ) -> ProviderResult<()> {
         self.provider.set_class_hash_of_contract(address, class_hash)
@@ -365,7 +362,7 @@ where
 
     fn set_nonce(
         &self,
-        address: ContractAddress,
+        address: Address,
         nonce: katana_primitives::contract::Nonce,
     ) -> ProviderResult<()> {
         self.provider.set_nonce(address, nonce)

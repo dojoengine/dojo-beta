@@ -10,7 +10,7 @@ use katana_primitives::block::{
     SealedBlockWithStatus,
 };
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::env::BlockEnv;
 use katana_primitives::receipt::Receipt;
 use katana_primitives::state::{StateUpdates, StateUpdatesWithDeclaredClasses};
@@ -538,7 +538,7 @@ impl ContractClassWriter for InMemoryProvider {
 impl StateWriter for InMemoryProvider {
     fn set_storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: katana_primitives::contract::StorageKey,
         storage_value: katana_primitives::contract::StorageValue,
     ) -> ProviderResult<()> {
@@ -548,7 +548,7 @@ impl StateWriter for InMemoryProvider {
 
     fn set_class_hash_of_contract(
         &self,
-        address: ContractAddress,
+        address: Address,
         class_hash: ClassHash,
     ) -> ProviderResult<()> {
         self.state.contract_state.write().entry(address).or_default().class_hash = class_hash;
@@ -557,7 +557,7 @@ impl StateWriter for InMemoryProvider {
 
     fn set_nonce(
         &self,
-        address: ContractAddress,
+        address: Address,
         nonce: katana_primitives::contract::Nonce,
     ) -> ProviderResult<()> {
         self.state.contract_state.write().entry(address).or_default().nonce = nonce;

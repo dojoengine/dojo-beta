@@ -4,7 +4,7 @@ use starknet::core::types::{DataAvailabilityMode, ResourceBoundsMapping};
 
 use crate::chain::ChainId;
 use crate::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use crate::contract::{ContractAddress, Nonce};
+use crate::contract::{Address, Nonce};
 use crate::utils::transaction::{
     compute_declare_v1_tx_hash, compute_declare_v2_tx_hash, compute_declare_v3_tx_hash,
     compute_deploy_account_v1_tx_hash, compute_deploy_account_v3_tx_hash,
@@ -166,7 +166,7 @@ pub struct InvokeTxV1 {
     /// Used as a simple replay attack protection.
     pub chain_id: ChainId,
     /// The account address which the transaction is initiated from.
-    pub sender_address: ContractAddress,
+    pub sender_address: Address,
     /// The nonce value of the account. Corresponds to the number of transactions initiated by
     /// sender.
     pub nonce: Nonce,
@@ -186,7 +186,7 @@ pub struct InvokeTxV3 {
     /// Used as a simple replay attack protection.
     pub chain_id: ChainId,
     /// The account address which the transaction is initiated from.
-    pub sender_address: ContractAddress,
+    pub sender_address: Address,
     /// The nonce value of the account. Corresponds to the number of transactions initiated by
     /// sender.
     pub nonce: Felt,
@@ -271,7 +271,7 @@ pub struct DeclareTxV1 {
     /// Used as a simple replay attack protection.
     pub chain_id: ChainId,
     /// The account address which the transaction is initiated from.
-    pub sender_address: ContractAddress,
+    pub sender_address: Address,
     /// The nonce value of the account. Corresponds to the number of transactions initiated by
     /// sender.
     pub nonce: Felt,
@@ -292,7 +292,7 @@ pub struct DeclareTxV2 {
     /// Used as a simple replay attack protection.
     pub chain_id: ChainId,
     /// The account address which the transaction is initiated from.
-    pub sender_address: ContractAddress,
+    pub sender_address: Address,
     /// The nonce value of the account. Corresponds to the number of transactions initiated by
     /// sender.
     pub nonce: Felt,
@@ -315,7 +315,7 @@ pub struct DeclareTxV3 {
     /// Used as a simple replay attack protection.
     pub chain_id: ChainId,
     /// The account address which the transaction is initiated from.
-    pub sender_address: ContractAddress,
+    pub sender_address: Address,
     /// The nonce value of the account. Corresponds to the number of transactions initiated by
     /// sender.
     pub nonce: Felt,
@@ -398,7 +398,7 @@ pub struct L1HandlerTx {
     /// The input to the L1 handler function.
     pub calldata: Vec<Felt>,
     /// Contract address of the L1 handler.
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
     /// The L1 handler function selector.
     pub entry_point_selector: Felt,
 }
@@ -425,7 +425,7 @@ pub enum DeployAccountTx {
 }
 
 impl DeployAccountTx {
-    pub fn contract_address(&self) -> ContractAddress {
+    pub fn contract_address(&self) -> Address {
         match self {
             DeployAccountTx::V1(tx) => tx.contract_address,
             DeployAccountTx::V3(tx) => tx.contract_address,
@@ -448,7 +448,7 @@ pub struct DeployAccountTxV1 {
     /// The hash of the contract class from which the account contract will be deployed from.
     pub class_hash: ClassHash,
     /// The contract address of the account contract that will be deployed.
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
     /// The salt used to generate the contract address.
     pub contract_address_salt: Felt,
     /// The input data to the constructor function of the contract class.
@@ -472,7 +472,7 @@ pub struct DeployAccountTxV3 {
     /// The hash of the contract class from which the account contract will be deployed from.
     pub class_hash: ClassHash,
     /// The contract address of the account contract that will be deployed.
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
     /// The salt used to generate the contract address.
     pub contract_address_salt: Felt,
     /// The input data to the constructor function of the contract class.

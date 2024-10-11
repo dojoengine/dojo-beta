@@ -4,7 +4,8 @@ use alloy_primitives::U256;
 use anyhow::Result;
 use async_trait::async_trait;
 use coset::CoseKey;
-use katana_primitives::contract::{ContractAddress, StorageKey, StorageValue};
+use katana_primitives::address;
+use katana_primitives::contract::{Address, StorageKey, StorageValue};
 use katana_primitives::genesis::allocation::{GenesisAllocation, GenesisContractAlloc};
 use katana_primitives::genesis::constant::CONTROLLER_ACCOUNT_CONTRACT_CLASS_HASH;
 use katana_primitives::genesis::Genesis;
@@ -47,7 +48,7 @@ fn add_controller_account_inner(genesis: &mut Genesis, user: slot::account::Acco
             storage: Some(get_contract_storage(credential_id, public_key)?),
         };
 
-        let address = ContractAddress::from(user.contract_address);
+        let address = address!(user.contract_address);
 
         (address, GenesisAllocation::Contract(account))
     };
@@ -96,7 +97,7 @@ pub mod json {
                 storage: Some(get_contract_storage(credential_id, public_key)?),
             };
 
-            let address = ContractAddress::from(user.account.contract_address);
+            let address = address!(user.account.contract_address);
 
             (address, account)
         };
@@ -230,7 +231,7 @@ mod tests {
 
         add_controller_account_inner(&mut genesis, account.clone()).unwrap();
 
-        let address = ContractAddress::from(account.contract_address);
+        let address = address!(account.contract_address);
         let allocation = genesis.allocations.get(&address).unwrap();
 
         assert!(genesis.allocations.contains_key(&address));

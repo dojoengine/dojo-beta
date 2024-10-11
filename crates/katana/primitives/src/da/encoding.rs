@@ -38,7 +38,7 @@ use num_bigint::BigUint;
 use num_traits::{FromPrimitive, One, ToPrimitive};
 
 use crate::class::{ClassHash, CompiledClassHash};
-use crate::contract::{ContractAddress, StorageKey, StorageValue};
+use crate::contract::{Address, StorageKey, StorageValue};
 use crate::state::StateUpdates;
 use crate::Felt;
 
@@ -76,7 +76,7 @@ pub enum EncodingError {
 /// blob object (eg an EIP4844 blob), it should be the sequencer's responsibility to ensure that
 /// the state diffs should fit inside the single blob object.
 pub fn encode_state_updates(value: StateUpdates) -> Vec<BigUint> {
-    let mut contract_updates = BTreeMap::<ContractAddress, ContractUpdate>::new();
+    let mut contract_updates = BTreeMap::<Address, ContractUpdate>::new();
 
     for (addr, nonce) in &value.nonce_updates {
         let entry = contract_updates.entry(*addr).or_default();
@@ -139,7 +139,7 @@ pub fn decode_state_updates(value: &[BigUint]) -> Result<StateUpdates, EncodingE
 
     for _ in 0..total_updates {
         let address = iter.next().ok_or(EncodingError::MissingAddress)?;
-        let address = ContractAddress::from(address);
+        let address = Address::from(address);
 
         let metadata = iter.next().ok_or(EncodingError::MissingMetadata)?;
         let metadata = Metadata::decode(metadata)?;

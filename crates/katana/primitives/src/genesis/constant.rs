@@ -2,20 +2,21 @@ use lazy_static::lazy_static;
 use starknet::core::utils::get_storage_var_address;
 use starknet::macros::felt;
 
+use crate::address;
 use crate::class::{ClassHash, CompiledClass, CompiledClassHash, SierraClass};
-use crate::contract::{ContractAddress, StorageKey};
+use crate::contract::{Address, StorageKey};
 use crate::utils::class::{parse_compiled_class, parse_sierra_class};
 use crate::Felt;
 
 /// The default universal deployer contract address.
 /// Corresponds to 0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf
-pub const DEFAULT_UDC_ADDRESS: ContractAddress =
-    ContractAddress(felt!("0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf"));
+pub const DEFAULT_UDC_ADDRESS: Address =
+    address!("0x041a78e741e5af2fec34b695679bc6891742439f7afb8484ecd7766661ad02bf");
 
 /// The default fee token contract address.
 /// Corresponds to 0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7
-pub const DEFAULT_FEE_TOKEN_ADDRESS: ContractAddress =
-    ContractAddress(felt!("0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"));
+pub const DEFAULT_FEE_TOKEN_ADDRESS: Address =
+    address!("0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7");
 
 /// The standard storage address for `public key` in OpenZeppelin account contract.
 /// Corresponds to keccak("Account_public_key") ==
@@ -106,7 +107,7 @@ lazy_static! {
 ///
 /// This is to compute the base storage address of the balance because the fee token balance is
 /// stored as a U256 value and as such has to be split into two U128 values (low and high).
-pub(super) fn get_fee_token_balance_base_storage_address(address: ContractAddress) -> Felt {
+pub(super) fn get_fee_token_balance_base_storage_address(address: Address) -> Felt {
     get_storage_var_address("ERC20_balances", &[address.into()]).unwrap()
 }
 

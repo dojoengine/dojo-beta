@@ -4,7 +4,7 @@ use katana_cairo::cairo_vm::types::builtin_name::BuiltinName;
 use katana_cairo::cairo_vm::vm;
 
 use crate::class::ClassHash;
-use crate::contract::ContractAddress;
+use crate::contract::Address;
 use crate::event::OrderedEvent;
 use crate::message::OrderedL2ToL1Message;
 use crate::transaction::TxType;
@@ -72,7 +72,7 @@ pub enum EntryPointType {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CallInfo {
     /// The contract address which the call is initiated from.
-    pub caller_address: ContractAddress,
+    pub caller_address: Address,
     /// The call type.
     pub call_type: CallType,
     /// The contract address.
@@ -80,10 +80,10 @@ pub struct CallInfo {
     /// The contract address of the current call execution context. This would be the address of
     /// the contract whose code is currently being executed, or in the case of library call, the
     /// address of the contract where the library call is being initiated from.
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
     /// The address where the code is being executed.
     /// Optional, since there is no address to the code implementation in a delegate call.
-    pub code_address: Option<ContractAddress>,
+    pub code_address: Option<Address>,
     /// The class hash, not given if it can be deduced from the storage address.
     pub class_hash: Option<ClassHash>,
     /// The entry point selector.

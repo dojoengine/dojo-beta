@@ -7,7 +7,7 @@ use katana_primitives::block::{
     BlockHashOrNumber, FinalityStatus, Header, SealedBlock, SealedBlockWithStatus, SealedHeader,
 };
 use katana_primitives::class::{CompiledClass, FlattenedSierraClass, SierraClass};
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::genesis::constant::{
     DEFAULT_LEGACY_ERC20_CONTRACT_CASM, DEFAULT_LEGACY_UDC_CASM,
 };

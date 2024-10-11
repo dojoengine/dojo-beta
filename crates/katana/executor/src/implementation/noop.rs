@@ -1,6 +1,6 @@
 use katana_primitives::block::ExecutableBlock;
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, Nonce, StorageKey, StorageValue};
 use katana_primitives::env::{BlockEnv, CfgEnv};
 use katana_primitives::fee::TxFeeInfo;
 use katana_primitives::transaction::{ExecutableTxWithHash, TxWithHash};
@@ -147,22 +147,19 @@ impl ContractClassProvider for NoopStateProvider {
 }
 
 impl StateProvider for NoopStateProvider {
-    fn class_hash_of_contract(
-        &self,
-        address: ContractAddress,
-    ) -> ProviderResult<Option<ClassHash>> {
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>> {
         let _ = address;
         Ok(None)
     }
 
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         let _ = address;
         Ok(None)
     }
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         let _ = address;

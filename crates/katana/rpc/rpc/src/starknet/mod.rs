@@ -15,7 +15,7 @@ use katana_primitives::block::{
     BlockHash, BlockHashOrNumber, BlockIdOrTag, BlockNumber, BlockTag, FinalityStatus,
 };
 use katana_primitives::class::{ClassHash, CompiledClass};
-use katana_primitives::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, Nonce, StorageKey, StorageValue};
 use katana_primitives::conversion::rpc::legacy_inner_to_rpc_class;
 use katana_primitives::env::BlockEnv;
 use katana_primitives::event::ContinuationToken;
@@ -220,7 +220,7 @@ impl<EF: ExecutorFactory> StarknetApi<EF> {
     async fn class_hash_at_address(
         &self,
         block_id: BlockIdOrTag,
-        contract_address: ContractAddress,
+        contract_address: Address,
     ) -> Result<ClassHash, StarknetApiError> {
         self.on_io_blocking_task(move |this| {
             let state = this.state(&block_id)?;
@@ -233,7 +233,7 @@ impl<EF: ExecutorFactory> StarknetApi<EF> {
     async fn class_at_address(
         &self,
         block_id: BlockIdOrTag,
-        contract_address: ContractAddress,
+        contract_address: Address,
     ) -> Result<ContractClass, StarknetApiError> {
         let hash = self.class_hash_at_address(block_id, contract_address).await?;
         let class = self.class_at_hash(block_id, hash).await?;
@@ -242,7 +242,7 @@ impl<EF: ExecutorFactory> StarknetApi<EF> {
 
     fn storage_at(
         &self,
-        contract_address: ContractAddress,
+        contract_address: Address,
         storage_key: StorageKey,
         block_id: BlockIdOrTag,
     ) -> Result<StorageValue, StarknetApiError> {
@@ -287,7 +287,7 @@ impl<EF: ExecutorFactory> StarknetApi<EF> {
     async fn nonce_at(
         &self,
         block_id: BlockIdOrTag,
-        contract_address: ContractAddress,
+        contract_address: Address,
     ) -> Result<Nonce, StarknetApiError> {
         self.on_io_blocking_task(move |this| {
             // read from the pool state if pending block
@@ -335,7 +335,7 @@ impl<EF: ExecutorFactory> StarknetApi<EF> {
         &self,
         from_block: BlockIdOrTag,
         to_block: BlockIdOrTag,
-        address: Option<ContractAddress>,
+        address: Option<Address>,
         keys: Option<Vec<Vec<Felt>>>,
         continuation_token: Option<String>,
         chunk_size: u64,

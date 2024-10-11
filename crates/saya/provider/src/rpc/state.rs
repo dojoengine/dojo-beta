@@ -13,7 +13,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use alloy_primitives::U256;
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::state::StateUpdates;
 use num_traits::ToPrimitive;
 use starknet::core::types::{
@@ -38,7 +38,7 @@ pub fn state_updates_from_rpc(state_update: &StateUpdate) -> ProviderResult<Stat
     for contract_diff in &state_diff.storage_diffs {
         let ContractStorageDiffItem { address, storage_entries: entries } = contract_diff;
 
-        let address: ContractAddress = (*address).into();
+        let address: Address = (*address).into();
 
         let contract_entry = out.storage_updates.entry(address).or_insert_with(BTreeMap::new);
 

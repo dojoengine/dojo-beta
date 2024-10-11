@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use katana_primitives::contract::{ContractAddress, Nonce};
+use katana_primitives::contract::{Address, Nonce};
 use katana_primitives::transaction::{
     DeclareTx, DeployAccountTx, ExecutableTx, ExecutableTxWithHash, InvokeTx, TxHash,
 };
@@ -18,7 +18,7 @@ pub trait PoolTransaction: Clone {
     fn nonce(&self) -> Nonce;
 
     /// return the tx sender.
-    fn sender(&self) -> ContractAddress;
+    fn sender(&self) -> Address;
 
     /// return the max fee that tx is willing to pay.
     fn max_fee(&self) -> u128;
@@ -30,12 +30,12 @@ pub trait PoolTransaction: Clone {
 /// the tx id in the pool. identified by its sender and nonce.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TxId {
-    sender: ContractAddress,
+    sender: Address,
     nonce: Nonce,
 }
 
 impl TxId {
-    pub fn new(sender: ContractAddress, nonce: Nonce) -> Self {
+    pub fn new(sender: Address, nonce: Nonce) -> Self {
         Self { sender, nonce }
     }
 
@@ -132,7 +132,7 @@ impl PoolTransaction for ExecutableTxWithHash {
         }
     }
 
-    fn sender(&self) -> ContractAddress {
+    fn sender(&self) -> Address {
         match &self.transaction {
             ExecutableTx::Invoke(tx) => match tx {
                 InvokeTx::V1(v1) => v1.sender_address,

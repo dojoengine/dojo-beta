@@ -36,7 +36,7 @@ use katana_primitives::block::GasPrices;
 use katana_primitives::chain::ChainId;
 use katana_primitives::chain_spec::ChainSpec;
 use katana_primitives::class::ClassHash;
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::genesis::allocation::{DevAllocationsGenerator, GenesisAccountAlloc};
 use katana_primitives::genesis::constant::DEFAULT_PREFUNDED_ACCOUNT_BALANCE;
 use katana_primitives::genesis::Genesis;
@@ -446,7 +446,7 @@ PREDEPLOYED CONTRACTS
 
 fn print_genesis_accounts<'a, Accounts>(accounts: Accounts)
 where
-    Accounts: Iterator<Item = (&'a ContractAddress, &'a GenesisAccountAlloc)>,
+    Accounts: Iterator<Item = (&'a Address, &'a GenesisAccountAlloc)>,
 {
     println!(
         r"

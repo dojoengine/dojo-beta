@@ -1,6 +1,6 @@
 use alloy_primitives::B256;
 
-use crate::contract::ContractAddress;
+use crate::contract::Address;
 use crate::fee::TxFeeInfo;
 use crate::trace::TxResources;
 use crate::Felt;
@@ -9,7 +9,7 @@ use crate::Felt;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Event {
     /// The contract address that emitted the event.
-    pub from_address: ContractAddress,
+    pub from_address: Address,
     /// The event keys.
     pub keys: Vec<Felt>,
     /// The event data.
@@ -21,7 +21,7 @@ pub struct Event {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MessageToL1 {
     /// The L2 contract address that sent the message.
-    pub from_address: ContractAddress,
+    pub from_address: Address,
     /// The L1 contract address that the message is sent to.
     pub to_address: Felt,
     /// The payload of the message.
@@ -93,7 +93,7 @@ pub struct DeployAccountTxReceipt {
     /// The execution resources used by the transaction.
     pub execution_resources: TxResources,
     /// Contract address of the deployed account contract.
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
 }
 
 /// The receipt of a transaction containing the outputs of its execution.

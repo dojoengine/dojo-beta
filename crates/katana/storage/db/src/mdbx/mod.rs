@@ -207,7 +207,7 @@ pub mod test_utils {
 mod tests {
 
     use katana_primitives::block::Header;
-    use katana_primitives::contract::{ContractAddress, GenericContractInfo};
+    use katana_primitives::contract::{Address, GenericContractInfo};
     use katana_primitives::{address, Felt};
     use starknet::macros::felt;
 

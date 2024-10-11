@@ -1,7 +1,7 @@
 use katana_db::error::DatabaseError;
 use katana_primitives::block::BlockNumber;
 use katana_primitives::class::ClassHash;
-use katana_primitives::contract::{ContractAddress, StorageKey};
+use katana_primitives::contract::{Address, StorageKey};
 use katana_primitives::transaction::TxNumber;
 
 /// Possible errors returned by the storage provider.
@@ -68,17 +68,19 @@ pub enum ProviderError {
         /// The block number of when the change happen.
         block: BlockNumber,
         /// The updated contract address.
-        contract_address: ContractAddress,
+        contract_address: Address,
     },
 
     /// Error when a contract nonce change entry is not found but the block number of when the
     /// change happen exists in the nonce change list.
-    #[error("Missing contract nonce change entry for contract {contract_address} at block {block}")]
+    #[error(
+        "Missing contract nonce change entry for contract {contract_address} at block {block}"
+    )]
     MissingContractNonceChangeEntry {
         /// The block number of when the change happen.
         block: BlockNumber,
         /// The updated contract address.
-        contract_address: ContractAddress,
+        contract_address: Address,
     },
 
     /// Error when a storage change entry is not found but the block number of when the change
@@ -91,7 +93,7 @@ pub enum ProviderError {
         /// The block number of when the change happen.
         block: BlockNumber,
         /// The updated contract address.
-        contract_address: ContractAddress,
+        contract_address: Address,
         /// The updated storage key.
         storage_key: StorageKey,
     },

@@ -1,5 +1,5 @@
 use katana_primitives::chain::ChainId;
-use katana_primitives::contract::{ContractAddress, Nonce};
+use katana_primitives::contract::{Address, Nonce};
 use katana_primitives::env::CfgEnv;
 use katana_primitives::genesis::allocation::GenesisAllocation;
 use katana_primitives::genesis::constant::DEFAULT_FEE_TOKEN_ADDRESS;
@@ -21,7 +21,7 @@ use super::{cfg, genesis};
 
 #[allow(unused)]
 pub fn invoke_executable_tx(
-    address: ContractAddress,
+    address: Address,
     private_key: Felt,
     chain_id: ChainId,
     nonce: Nonce,

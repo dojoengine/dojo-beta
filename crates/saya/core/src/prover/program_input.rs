@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::bail;
 use bigdecimal::BigDecimal;
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::state::StateUpdates;
 use katana_primitives::trace::{CallInfo, EntryPointType};
 use katana_primitives::transaction::{L1HandlerTx, TxHash};
@@ -62,7 +62,7 @@ fn get_messages_recursively(info: &CallInfo) -> Vec<MessageToStarknet> {
 
     messages.extend(info.l2_to_l1_messages.iter().map(|m| MessageToStarknet {
         from_address,
-        to_address: ContractAddress::from(m.to_address),
+        to_address: Address::from(m.to_address),
         payload: m.payload.clone(),
     }));
 
@@ -133,7 +133,7 @@ impl ProgramInput {
         let updates = self
             .state_updates
             .storage_updates
-            .get(&ContractAddress::from(world))
+            .get(&Address::from(world))
             .unwrap_or(&std::collections::BTreeMap::new())
             .iter()
             .flat_map(|(k, v)| vec![*k, *v])
@@ -199,7 +199,7 @@ impl ProgramInput {
         let updates = self
             .state_updates
             .storage_updates
-            .get(&ContractAddress::from(world))
+            .get(&Address::from(world))
             .unwrap_or(&std::collections::BTreeMap::new())
             .iter()
             .flat_map(|(k, v)| vec![*k, *v])
@@ -285,8 +285,8 @@ impl ProgramInput {
 /// Based on https://github.com/cartridge-gg/piltover/blob/2be9d46f00c9c71e2217ab74341f77b09f034c81/src/messaging/output_process.cairo#L16
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct MessageToStarknet {
-    pub from_address: ContractAddress,
-    pub to_address: ContractAddress,
+    pub from_address: Address,
+    pub to_address: Address,
     pub payload: Vec<Felt>,
 }
 
@@ -373,8 +373,8 @@ impl MessageToStarknet {
                         }
                     }
                     messages.push(MessageToStarknet {
-                        from_address: ContractAddress::from(from_address),
-                        to_address: ContractAddress::from(to_address),
+                        from_address: Address::from(from_address),
+                        to_address: Address::from(to_address),
                         payload,
                     });
                 }
@@ -389,8 +389,8 @@ impl MessageToStarknet {
 /// Based on https://github.com/cartridge-gg/piltover/blob/2be9d46f00c9c71e2217ab74341f77b09f034c81/src/messaging/output_process.cairo#L28
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, Default, PartialOrd, Ord)]
 pub struct MessageToAppchain {
-    pub from_address: ContractAddress,
-    pub to_address: ContractAddress,
+    pub from_address: Address,
+    pub to_address: Address,
     pub nonce: Felt,
     pub selector: Felt,
     pub payload: Vec<Felt>,
@@ -486,8 +486,8 @@ impl MessageToAppchain {
                         }
                     }
                     messages.push(MessageToAppchain {
-                        from_address: ContractAddress::from(from_address),
-                        to_address: ContractAddress::from(to_address),
+                        from_address: Address::from(from_address),
+                        to_address: Address::from(to_address),
                         nonce,
                         selector,
                         payload,

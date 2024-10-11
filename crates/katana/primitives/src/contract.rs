@@ -17,57 +17,50 @@ pub type Nonce = Felt;
 /// Represents a contract address.
 #[derive(Default, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct ContractAddress(pub Felt);
+pub struct Address(Felt);
 
-impl ContractAddress {
-    pub fn new(address: Felt) -> Self {
-        ContractAddress(normalize_address(address))
+impl Address {
+    /// Creates a new [`Address`] from the raw internal representation.
+    pub const fn from_raw(value: [u64; 4]) -> Self {
+        Self(Felt::from_raw(value))
     }
 }
 
-impl core::ops::Deref for ContractAddress {
+impl core::ops::Deref for Address {
     type Target = Felt;
-
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl fmt::Display for ContractAddress {
+impl fmt::Display for Address {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:#x}", self.0)
     }
 }
 
-impl From<Felt> for ContractAddress {
+impl From<Felt> for Address {
     fn from(value: Felt) -> Self {
-        ContractAddress::new(value)
+        Address(normalize_address(value))
     }
 }
 
-impl From<ContractAddress> for Felt {
-    fn from(value: ContractAddress) -> Self {
+impl From<Address> for Felt {
+    fn from(value: Address) -> Self {
         value.0
     }
 }
 
-impl From<&BigUint> for ContractAddress {
+impl From<&BigUint> for Address {
     fn from(biguint: &BigUint) -> Self {
-        Self::new(Felt::from_bytes_le_slice(&biguint.to_bytes_le()))
+        Self::from(Felt::from_bytes_le_slice(&biguint.to_bytes_le()))
     }
 }
 
-impl From<BigUint> for ContractAddress {
+impl From<BigUint> for Address {
     fn from(biguint: BigUint) -> Self {
-        Self::new(Felt::from_bytes_le_slice(&biguint.to_bytes_le()))
+        Self::from(Felt::from_bytes_le_slice(&biguint.to_bytes_le()))
     }
-}
-
-#[macro_export]
-macro_rules! address {
-    ($value:expr) => {
-        ContractAddress::new($crate::felt!($value))
-    };
 }
 
 /// Represents a generic contract instance information.

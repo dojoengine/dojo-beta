@@ -21,7 +21,7 @@ use katana_primitives::block::{
 };
 use katana_primitives::class::{ClassHash, CompiledClassHash};
 use katana_primitives::contract::{
-    ContractAddress, GenericContractInfo, Nonce, StorageKey, StorageValue,
+    Address, GenericContractInfo, Nonce, StorageKey, StorageValue,
 };
 use katana_primitives::env::BlockEnv;
 use katana_primitives::receipt::Receipt;
@@ -292,7 +292,7 @@ impl<Db: Database> StateUpdateProvider for DbProvider<Db> {
             let nonce_updates = dup_entries::<
                 Db,
                 tables::NonceChangeHistory,
-                BTreeMap<ContractAddress, Nonce>,
+                BTreeMap<Address, Nonce>,
                 _,
             >(&db_tx, block_num, |entry| {
                 let (_, ContractNonceChange { contract_address, nonce }) = entry?;
@@ -302,7 +302,7 @@ impl<Db: Database> StateUpdateProvider for DbProvider<Db> {
             let deployed_contracts = dup_entries::<
                 Db,
                 tables::ClassChangeHistory,
-                BTreeMap<ContractAddress, ClassHash>,
+                BTreeMap<Address, ClassHash>,
                 _,
             >(&db_tx, block_num, |entry| {
                 let (_, ContractClassChange { contract_address, class_hash }) = entry?;
@@ -328,7 +328,7 @@ impl<Db: Database> StateUpdateProvider for DbProvider<Db> {
                 let entries = dup_entries::<
                     Db,
                     tables::StorageChangeHistory,
-                    Vec<(ContractAddress, (StorageKey, StorageValue))>,
+                    Vec<(Address, (StorageKey, StorageValue))>,
                     _,
                 >(&db_tx, block_num, |entry| {
                     let (_, ContractStorageEntry { key, value }) = entry?;
@@ -773,7 +773,7 @@ mod tests {
     use katana_primitives::block::{
         Block, BlockHashOrNumber, FinalityStatus, Header, SealedBlockWithStatus,
     };
-    use katana_primitives::contract::ContractAddress;
+    use katana_primitives::contract::Address;
     use katana_primitives::fee::TxFeeInfo;
     use katana_primitives::receipt::{InvokeTxReceipt, Receipt};
     use katana_primitives::state::{StateUpdates, StateUpdatesWithDeclaredClasses};

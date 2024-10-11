@@ -8,7 +8,7 @@ use katana_db::tables;
 use katana_primitives::block::BlockNumber;
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
 use katana_primitives::contract::{
-    ContractAddress, GenericContractInfo, Nonce, StorageKey, StorageValue,
+    Address, GenericContractInfo, Nonce, StorageKey, StorageValue,
 };
 
 use super::DbProvider;
@@ -18,7 +18,7 @@ use crate::traits::state::{StateProvider, StateWriter};
 use crate::ProviderResult;
 
 impl<Db: Database> StateWriter for DbProvider<Db> {
-    fn set_nonce(&self, address: ContractAddress, nonce: Nonce) -> ProviderResult<()> {
+    fn set_nonce(&self, address: Address, nonce: Nonce) -> ProviderResult<()> {
         self.0.update(move |db_tx| -> ProviderResult<()> {
             let value = if let Some(info) = db_tx.get::<tables::ContractInfo>(address)? {
                 GenericContractInfo { nonce, ..info }
@@ -32,7 +32,7 @@ impl<Db: Database> StateWriter for DbProvider<Db> {
 
     fn set_storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
         storage_value: StorageValue,
     ) -> ProviderResult<()> {
@@ -54,7 +54,7 @@ impl<Db: Database> StateWriter for DbProvider<Db> {
 
     fn set_class_hash_of_contract(
         &self,
-        address: ContractAddress,
+        address: Address,
         class_hash: ClassHash,
     ) -> ProviderResult<()> {
         self.0.update(move |db_tx| -> ProviderResult<()> {
@@ -137,14 +137,14 @@ impl<Tx> StateProvider for LatestStateProvider<Tx>
 where
     Tx: DbTx + fmt::Debug + Send + Sync,
 {
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         let info = self.0.get::<tables::ContractInfo>(address)?;
         Ok(info.map(|info| info.nonce))
     }
 
     fn class_hash_of_contract(
         &self,
-        address: ContractAddress,
+        address: Address,
     ) -> ProviderResult<Option<ClassHash>> {
         let info = self.0.get::<tables::ContractInfo>(address)?;
         Ok(info.map(|info| info.class_hash))
@@ -152,7 +152,7 @@ where
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         let mut cursor = self.0.cursor_dup::<tables::ContractStorage>()?;
@@ -221,7 +221,7 @@ impl<Tx> StateProvider for HistoricalStateProvider<Tx>
 where
     Tx: DbTx + fmt::Debug + Send + Sync,
 {
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>> {
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>> {
         let change_list = self.tx.get::<tables::ContractInfoChangeSet>(address)?;
 
         if let Some(num) = change_list
@@ -245,7 +245,7 @@ where
 
     fn class_hash_of_contract(
         &self,
-        address: ContractAddress,
+        address: Address,
     ) -> ProviderResult<Option<ClassHash>> {
         let change_list: Option<ContractInfoChangeList> =
             self.tx.get::<tables::ContractInfoChangeSet>(address)?;
@@ -271,7 +271,7 @@ where
 
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>> {
         let key = ContractStorageKey { contract_address: address, key: storage_key };

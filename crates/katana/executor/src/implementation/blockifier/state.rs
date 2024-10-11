@@ -129,7 +129,11 @@ impl<S: StateDb> ContractClassProvider for CachedState<S> {
             return Ok(None);
         };
 
-        if hash.0 == Felt::ZERO { Ok(None) } else { Ok(Some(hash.0)) }
+        if hash.0 == Felt::ZERO {
+            Ok(None)
+        } else {
+            Ok(Some(hash.0))
+        }
     }
     fn sierra_class(
         &self,
@@ -147,18 +151,22 @@ impl<S: StateDb> ContractClassProvider for CachedState<S> {
 impl<S: StateDb> StateProvider for CachedState<S> {
     fn class_hash_of_contract(
         &self,
-        address: katana_primitives::contract::ContractAddress,
+        address: katana_primitives::contract::Address,
     ) -> ProviderResult<Option<katana_primitives::class::ClassHash>> {
         let Ok(hash) = self.0.lock().inner.get_class_hash_at(utils::to_blk_address(address)) else {
             return Ok(None);
         };
 
-        if hash.0 == Felt::ZERO { Ok(None) } else { Ok(Some(hash.0)) }
+        if hash.0 == Felt::ZERO {
+            Ok(None)
+        } else {
+            Ok(Some(hash.0))
+        }
     }
 
     fn nonce(
         &self,
-        address: katana_primitives::contract::ContractAddress,
+        address: katana_primitives::contract::Address,
     ) -> ProviderResult<Option<katana_primitives::contract::Nonce>> {
         // check if the contract is deployed
         if self.class_hash_of_contract(address)?.is_none() {
@@ -173,7 +181,7 @@ impl<S: StateDb> StateProvider for CachedState<S> {
 
     fn storage(
         &self,
-        address: katana_primitives::contract::ContractAddress,
+        address: katana_primitives::contract::Address,
         storage_key: katana_primitives::contract::StorageKey,
     ) -> ProviderResult<Option<katana_primitives::contract::StorageValue>> {
         // check if the contract is deployed
@@ -232,7 +240,7 @@ mod tests {
 
     use blockifier::state::state_api::{State, StateReader};
     use katana_primitives::class::{CompiledClass, FlattenedSierraClass};
-    use katana_primitives::contract::ContractAddress;
+    use katana_primitives::contract::Address;
     use katana_primitives::genesis::constant::{
         DEFAULT_LEGACY_ERC20_CONTRACT_CASM, DEFAULT_LEGACY_UDC_CASM, DEFAULT_OZ_ACCOUNT_CONTRACT,
         DEFAULT_OZ_ACCOUNT_CONTRACT_CASM,

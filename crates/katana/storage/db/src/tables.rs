@@ -1,6 +1,6 @@
 use katana_primitives::block::{BlockHash, BlockNumber, FinalityStatus, Header};
 use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash, FlattenedSierraClass};
-use katana_primitives::contract::{ContractAddress, GenericContractInfo, StorageKey};
+use katana_primitives::contract::{Address, GenericContractInfo, StorageKey};
 use katana_primitives::receipt::Receipt;
 use katana_primitives::trace::TxExecInfo;
 use katana_primitives::transaction::{Tx, TxHash, TxNumber};
@@ -201,9 +201,9 @@ tables! {
     /// Store Sierra classes according to its class hash
     SierraClasses: (ClassHash) => FlattenedSierraClass,
     /// Store contract information according to its contract address
-    ContractInfo: (ContractAddress) => GenericContractInfo,
+    ContractInfo: (Address) => GenericContractInfo,
     /// Store contract storage
-    ContractStorage: (ContractAddress, StorageKey) => StorageEntry,
+    ContractStorage: (Address, StorageKey) => StorageEntry,
 
 
     /// Stores the block number where the class hash was declared.
@@ -214,11 +214,11 @@ tables! {
     /// Generic contract info change set.
     ///
     /// Stores the list of blocks where the contract info (nonce / class hash) has changed.
-    ContractInfoChangeSet: (ContractAddress) => ContractInfoChangeList,
+    ContractInfoChangeSet: (Address) => ContractInfoChangeList,
     /// Contract nonce changes by block.
-    NonceChangeHistory: (BlockNumber, ContractAddress) => ContractNonceChange,
+    NonceChangeHistory: (BlockNumber, Address) => ContractNonceChange,
     /// Contract class hash changes by block.
-    ClassChangeHistory: (BlockNumber, ContractAddress) => ContractClassChange,
+    ClassChangeHistory: (BlockNumber, Address) => ContractClassChange,
 
     /// storage change set
     StorageChangeSet: (ContractStorageKey) => BlockList,
@@ -287,7 +287,7 @@ mod tests {
     use katana_primitives::address;
     use katana_primitives::block::{BlockHash, BlockNumber, FinalityStatus, Header};
     use katana_primitives::class::{ClassHash, CompiledClass, CompiledClassHash};
-    use katana_primitives::contract::{ContractAddress, GenericContractInfo};
+    use katana_primitives::contract::{Address, GenericContractInfo};
     use katana_primitives::fee::TxFeeInfo;
     use katana_primitives::receipt::{InvokeTxReceipt, Receipt};
     use katana_primitives::trace::TxExecInfo;
@@ -339,7 +339,7 @@ mod tests {
             (TxHash, felt!("0x123456789")),
             (TxNumber, 100),
             (ClassHash, felt!("0x123456789")),
-            (ContractAddress, address!("0x123456789")),
+            (Address, address!("0x123456789")),
             (ContractStorageKey, ContractStorageKey { contract_address : address!("0x123456789"), key : felt!("0x123456789")})
         }
     }

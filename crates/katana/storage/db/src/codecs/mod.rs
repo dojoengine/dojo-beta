@@ -3,7 +3,7 @@ pub mod postcard;
 
 use katana_primitives::block::FinalityStatus;
 use katana_primitives::class::FlattenedSierraClass;
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::Felt;
 
 use crate::error::CodecError;
@@ -70,7 +70,7 @@ macro_rules! impl_encode_and_decode_for_felts {
 }
 
 impl_encode_and_decode_for_uints!(u64);
-impl_encode_and_decode_for_felts!(Felt, ContractAddress);
+impl_encode_and_decode_for_felts!(Felt, Address);
 
 impl Compress for FlattenedSierraClass {
     type Compressed = Vec<u8>;

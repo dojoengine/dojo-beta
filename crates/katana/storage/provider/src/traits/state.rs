@@ -1,6 +1,6 @@
 use katana_primitives::block::BlockHashOrNumber;
 use katana_primitives::class::ClassHash;
-use katana_primitives::contract::{ContractAddress, Nonce, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, Nonce, StorageKey, StorageValue};
 use katana_primitives::Felt;
 
 use super::contract::ContractClassProvider;
@@ -15,18 +15,17 @@ pub trait StateRootProvider: Send + Sync {
 #[auto_impl::auto_impl(&, Box, Arc)]
 pub trait StateProvider: ContractClassProvider + Send + Sync + std::fmt::Debug {
     /// Returns the nonce of a contract.
-    fn nonce(&self, address: ContractAddress) -> ProviderResult<Option<Nonce>>;
+    fn nonce(&self, address: Address) -> ProviderResult<Option<Nonce>>;
 
     /// Returns the value of a contract storage.
     fn storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
     ) -> ProviderResult<Option<StorageValue>>;
 
     /// Returns the class hash of a contract.
-    fn class_hash_of_contract(&self, address: ContractAddress)
-    -> ProviderResult<Option<ClassHash>>;
+    fn class_hash_of_contract(&self, address: Address) -> ProviderResult<Option<ClassHash>>;
 }
 
 /// A type which can create [`StateProvider`] for states at a particular block.
@@ -46,12 +45,12 @@ pub trait StateFactoryProvider: Send + Sync {
 #[auto_impl::auto_impl(&, Box, Arc)]
 pub trait StateWriter: Send + Sync {
     /// Sets the nonce of a contract.
-    fn set_nonce(&self, address: ContractAddress, nonce: Nonce) -> ProviderResult<()>;
+    fn set_nonce(&self, address: Address, nonce: Nonce) -> ProviderResult<()>;
 
     /// Sets the value of a contract storage.
     fn set_storage(
         &self,
-        address: ContractAddress,
+        address: Address,
         storage_key: StorageKey,
         storage_value: StorageValue,
     ) -> ProviderResult<()>;
@@ -59,7 +58,7 @@ pub trait StateWriter: Send + Sync {
     /// Sets the class hash of a contract.
     fn set_class_hash_of_contract(
         &self,
-        address: ContractAddress,
+        address: Address,
         class_hash: ClassHash,
     ) -> ProviderResult<()>;
 }

@@ -1,5 +1,5 @@
 use katana_primitives::class::ClassHash;
-use katana_primitives::contract::{ContractAddress, Nonce};
+use katana_primitives::contract::{Address, Nonce};
 use serde::{Deserialize, Serialize};
 
 use super::list::BlockList;
@@ -13,7 +13,7 @@ pub struct ContractInfoChangeList {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ContractClassChange {
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
     /// The updated class hash of `contract_address`.
     pub class_hash: ClassHash,
 }
@@ -31,7 +31,7 @@ impl Compress for ContractClassChange {
 impl Decompress for ContractClassChange {
     fn decompress<B: AsRef<[u8]>>(bytes: B) -> Result<Self, crate::error::CodecError> {
         let bytes = bytes.as_ref();
-        let contract_address = ContractAddress::decode(&bytes[0..32])?;
+        let contract_address = Address::decode(&bytes[0..32])?;
         let class_hash = ClassHash::decompress(&bytes[32..])?;
         Ok(Self { contract_address, class_hash })
     }
@@ -39,7 +39,7 @@ impl Decompress for ContractClassChange {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ContractNonceChange {
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
     /// The updated nonce value of `contract_address`.
     pub nonce: Nonce,
 }
@@ -57,7 +57,7 @@ impl Compress for ContractNonceChange {
 impl Decompress for ContractNonceChange {
     fn decompress<B: AsRef<[u8]>>(bytes: B) -> Result<Self, crate::error::CodecError> {
         let bytes = bytes.as_ref();
-        let contract_address = ContractAddress::decode(&bytes[0..32])?;
+        let contract_address = Address::decode(&bytes[0..32])?;
         let nonce = Nonce::decompress(&bytes[32..])?;
         Ok(Self { contract_address, nonce })
     }

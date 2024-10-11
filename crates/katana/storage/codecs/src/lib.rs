@@ -1,4 +1,4 @@
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::Felt;
 
 /// Trait for writing compact representation of the types that implement it.
@@ -74,7 +74,7 @@ macro_rules! impl_compact_felt {
 }
 
 impl_compact_for_uints!(u64);
-impl_compact_felt!(Felt, ContractAddress);
+impl_compact_felt!(Felt, Address);
 
 #[cfg(test)]
 mod tests {

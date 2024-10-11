@@ -1,5 +1,5 @@
 use katana_primitives::block::Header;
-use katana_primitives::contract::{ContractAddress, GenericContractInfo};
+use katana_primitives::contract::{Address, GenericContractInfo};
 use katana_primitives::receipt::Receipt;
 use katana_primitives::trace::TxExecInfo;
 use katana_primitives::transaction::Tx;
@@ -38,7 +38,7 @@ impl_compress_and_decompress_for_table_values!(
     Header,
     Receipt,
     Felt,
-    ContractAddress,
+    Address,
     BlockList,
     GenericContractInfo,
     StoredBlockBodyIndices,

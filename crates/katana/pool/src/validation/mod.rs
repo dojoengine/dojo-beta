@@ -1,7 +1,7 @@
 pub mod stateful;
 
 use katana_primitives::class::ClassHash;
-use katana_primitives::contract::{ContractAddress, Nonce};
+use katana_primitives::contract::{Address, Nonce};
 use katana_primitives::transaction::TxHash;
 use katana_primitives::Felt;
 
@@ -36,7 +36,7 @@ pub enum InvalidTransactionError {
     #[error("{error}")]
     ValidationFailure {
         /// The address of the contract that failed validation.
-        address: ContractAddress,
+        address: Address,
         /// The class hash of the account contract.
         class_hash: ClassHash,
         /// The error message returned by Blockifier.
@@ -48,7 +48,7 @@ pub enum InvalidTransactionError {
     #[error("sender is not an account")]
     NonAccount {
         /// The address of the contract that is not an account.
-        address: ContractAddress,
+        address: Address,
     },
 
     /// Error when the transaction is using a nonexpected nonce.
@@ -58,7 +58,7 @@ pub enum InvalidTransactionError {
     )]
     InvalidNonce {
         /// The address of the contract that has the invalid nonce.
-        address: ContractAddress,
+        address: Address,
         /// The current nonce of the sender's account.
         current_nonce: Nonce,
         /// The nonce that the tx is using.

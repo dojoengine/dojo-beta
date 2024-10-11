@@ -92,6 +92,7 @@ katana-node-bindings = { path = "crates/katana/node-bindings" }
 katana-pipeline = { path = "crates/katana/pipeline" }
 katana-pool = { path = "crates/katana/pool" }
 katana-primitives = { path = "crates/katana/primitives" }
+katana-primitives-macros = { path = "crates/katana/primitives/macros" }
 katana-provider = { path = "crates/katana/storage/provider" }
 katana-rpc = { path = "crates/katana/rpc/rpc" }
 katana-rpc-api = { path = "crates/katana/rpc/rpc-api", default-features = false }

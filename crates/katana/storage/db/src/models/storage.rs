@@ -1,4 +1,4 @@
-use katana_primitives::contract::{ContractAddress, StorageKey, StorageValue};
+use katana_primitives::contract::{Address, StorageKey, StorageValue};
 
 use crate::codecs::{Compress, Decode, Decompress, Encode};
 use crate::error::CodecError;
@@ -35,7 +35,7 @@ impl Decompress for StorageEntry {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ContractStorageKey {
-    pub contract_address: ContractAddress,
+    pub contract_address: Address,
     pub key: StorageKey,
 }
 
@@ -52,7 +52,7 @@ impl Encode for ContractStorageKey {
 impl Decode for ContractStorageKey {
     fn decode<B: AsRef<[u8]>>(bytes: B) -> Result<Self, CodecError> {
         let bytes = bytes.as_ref();
-        let contract_address = ContractAddress::decode(&bytes[0..32])?;
+        let contract_address = Address::decode(&bytes[0..32])?;
         let key = StorageKey::decode(&bytes[32..])?;
         Ok(Self { contract_address, key })
     }

@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use anyhow::Context;
 use katana_core::service::block_producer::PendingExecutor;
 use katana_primitives::block::{BlockHash, BlockNumber};
-use katana_primitives::contract::ContractAddress;
+use katana_primitives::contract::Address;
 use katana_primitives::event::ContinuationToken;
 use katana_primitives::receipt::Event;
 use katana_primitives::transaction::TxHash;
@@ -40,7 +40,7 @@ pub struct Filter {
     ///
     /// If `None`, all events are considered. If `Some`, only events emitted by the specified
     /// contract are considered.
-    pub address: Option<ContractAddress>,
+    pub address: Option<Address>,
     /// The keys to filter by.
     pub keys: Option<Vec<Vec<Felt>>>,
 }

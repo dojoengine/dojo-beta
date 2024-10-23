@@ -113,7 +113,8 @@ pub fn get_fee_token_balance_base_storage_address(address: ContractAddress) -> F
     get_storage_var_address("ERC20_balances", &[address.into()]).unwrap()
 }
 
-fn read_compiled_class_artifact(artifact: &str) -> CompiledClass {
+/// Get the compiled class from the sierra contract
+pub fn read_compiled_class_artifact(artifact: &str) -> CompiledClass {
     let value = serde_json::from_str(artifact).unwrap();
     parse_compiled_class(value).unwrap()
 }

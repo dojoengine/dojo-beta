@@ -2013,7 +2013,7 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.8.0-rc.3"
-source = "git+https://github.com/dojoengine/sequencer?tag=v0.8.0-rc3.2#d6951f24fc2082c7aa89cdbc063648915b131d74"
+source = "git+https://github.com/dojoengine/sequencer?tag=v0.8.0-rc3.3#07f473f9385f1bce4cbd7d0d64b5396f6784bbf1"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -8116,7 +8116,9 @@ dependencies = [
  "alloy-primitives",
  "anyhow",
  "blockifier",
+ "cainome 0.2.3 (git+https://github.com/cartridge-gg/cainome?tag=v0.4.1)",
  "criterion",
+ "dojo-test-utils",
  "katana-cairo",
  "katana-primitives",
  "katana-provider",
@@ -8555,7 +8557,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -13924,7 +13926,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.13.0-rc.1"
-source = "git+https://github.com/dojoengine/sequencer?tag=v0.8.0-rc3.2#d6951f24fc2082c7aa89cdbc063648915b131d74"
+source = "git+https://github.com/dojoengine/sequencer?tag=v0.8.0-rc3.3#07f473f9385f1bce4cbd7d0d64b5396f6784bbf1"
 dependencies = [
  "bitvec",
  "cairo-lang-starknet-classes",
@@ -16211,7 +16213,7 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf221c93e13a30d793f7645a0e7762c55d169dbb0a49671918a2319d289b10bb"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

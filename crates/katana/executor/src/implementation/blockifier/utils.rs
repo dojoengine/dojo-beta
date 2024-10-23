@@ -53,7 +53,6 @@ use katana_primitives::transaction::{
 };
 use katana_primitives::{class, event, message, trace, Felt};
 use katana_provider::traits::contract::ContractClassProvider;
-use starknet::core::utils::parse_cairo_short_string;
 
 use super::state::{CachedState, StateDb};
 use crate::abstraction::{EntryPointCall, SimulationFlag};
@@ -524,10 +523,7 @@ pub fn to_blk_chain_id(chain_id: katana_primitives::chain::ChainId) -> ChainId {
         katana_primitives::chain::ChainId::Named(NamedChainId::Mainnet) => ChainId::Mainnet,
         katana_primitives::chain::ChainId::Named(NamedChainId::Sepolia) => ChainId::Sepolia,
         katana_primitives::chain::ChainId::Named(named) => ChainId::Other(named.to_string()),
-        katana_primitives::chain::ChainId::Id(id) => {
-            let id = parse_cairo_short_string(&id).expect("valid cairo string");
-            ChainId::Other(id)
-        }
+        katana_primitives::chain::ChainId::Id(id) => ChainId::Id(id),
     }
 }
 
@@ -693,44 +689,6 @@ mod tests {
         assert_eq!(blockifier_mainnet, ChainId::Mainnet);
         assert_eq!(blockifier_sepolia, ChainId::Sepolia);
         assert_eq!(blockifier_id.as_hex(), katana_id.to_string());
-    }
-
-    /// Test to ensure that when Blockifier pass the chain id to the contract ( thru a syscall eg,
-    /// get_tx_inbox().unbox().chain_id ), the value is exactly the same as Katana chain id.
-    ///
-    /// Issue: <https://github.com/dojoengine/dojo/issues/1595>
-    #[test]
-    fn blockifier_chain_id_invariant() {
-        let id = felt!("0x1337");
-
-        let katana_id = katana_primitives::chain::ChainId::Id(id);
-        let blockifier_id = to_blk_chain_id(katana_id);
-
-        // Mimic how blockifier convert from ChainId to FieldElement.
-        //
-        // This is how blockifier pass the chain id to the contract through a syscall.
-        // https://github.com/dojoengine/blockifier/blob/f2246ce2862d043e4efe2ecf149a4cb7bee689cd/crates/blockifier/src/execution/syscalls/hint_processor.rs#L600-L602
-        let actual_id = Felt::from_hex(blockifier_id.as_hex().as_str()).unwrap();
-
-        assert_eq!(actual_id, id)
-    }
-
-    #[test]
-    #[ignore = "The blockifier chain id conversion adds bytes for chain ids which don't have a \
-                valid utf8 representation"]
-    fn failing_blockifier_chain_id_conversion() {
-        let id = felt!("0xc72dd9d5e883e");
-
-        let katana_id = katana_primitives::chain::ChainId::Id(id);
-        let blockifier_id = to_blk_chain_id(katana_id);
-
-        // Mimic how blockifier convert from ChainId to FieldElement.
-        //
-        // This is how blockifier pass the chain id to the contract through a syscall.
-        // https://github.com/dojoengine/blockifier/blob/f2246ce2862d043e4efe2ecf149a4cb7bee689cd/crates/blockifier/src/execution/syscalls/hint_processor.rs#L600-L602
-        let actual_id = FieldElement::from_hex(blockifier_id.as_hex().as_str()).unwrap();
-
-        assert_eq!(actual_id, id)
     }
 
     fn create_blockifier_call_info() -> CallInfo {

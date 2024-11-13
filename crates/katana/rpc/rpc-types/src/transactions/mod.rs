@@ -1,3 +1,5 @@
+mod invoke;
+
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -26,6 +28,9 @@ use starknet::core::types::{
 use starknet::core::utils::get_contract_address;
 
 use crate::receipt::TxReceiptWithBlockInfo;
+
+const QUERY_VERSION_OFFSET: Felt =
+    Felt::from_raw([576460752142434320, 18446744073709551584, 17407, 18446744073700081665]);
 
 pub const CHUNK_SIZE_DEFAULT: u64 = 100;
 

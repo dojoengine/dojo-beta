@@ -161,8 +161,7 @@ pub fn compiled_class_hash_from_flattened_sierra_class(
 ) -> Result<Felt> {
     let contract_class = rpc_to_cairo_contract_class(contract_class)?;
     let casm = CasmContractClass::from_contract_class(contract_class, true, usize::MAX)?;
-    let compiled_class: CompiledClass = serde_json::from_str(&serde_json::to_string(&casm)?)?;
-    Ok(compiled_class.class_hash()?)
+    Ok(casm.compiled_class_hash())
 }
 
 /// Converts a legacy RPC compiled contract class [CompressedLegacyContractClass] type to the inner
@@ -303,5 +302,12 @@ mod tests {
     fn flattened_sierra_class_to_compiled_class() {
         let sierra = DEFAULT_ACCOUNT_CLASS.clone().flatten().unwrap();
         assert!(super::flattened_sierra_to_compiled_class(&sierra).is_ok());
+    }
+
+    #[test]
+    fn compiled_class_hash() {
+        let sierra = DEFAULT_ACCOUNT_CLASS.clone().flatten().unwrap();
+        let hash = super::compiled_class_hash_from_flattened_sierra_class(&sierra).unwrap();
+        dbg!(hash);
     }
 }

@@ -11,7 +11,7 @@ pub mod message;
 pub mod receipt;
 pub mod state_update;
 pub mod trace;
-pub mod transaction;
+pub mod transactions;
 mod utils;
 
 use std::ops::Deref;

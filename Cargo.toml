@@ -97,6 +97,7 @@ katana-codecs-derive = { path = "crates/katana/storage/codecs/derive" }
 katana-core = { path = "crates/katana/core", default-features = false }
 katana-db = { path = "crates/katana/storage/db" }
 katana-executor = { path = "crates/katana/executor" }
+katana-grpc = { path = "crates/katana/grpc" }
 katana-node = { path = "crates/katana/node", default-features = false }
 katana-node-bindings = { path = "crates/katana/node-bindings" }
 katana-pipeline = { path = "crates/katana/pipeline" }
@@ -243,6 +244,7 @@ warp = "0.3"
 prost = "0.12"
 tonic = { version = "0.11", features = [ "gzip", "tls", "tls-roots", "tls-webpki-roots" ] }
 tonic-build = "0.11"
+tonic-health = "0.11"
 tonic-reflection = "0.11"
 tonic-web = "0.11"
 

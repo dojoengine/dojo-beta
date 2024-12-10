@@ -115,17 +115,16 @@ pub mod c3 {}
 #[cfg(test)]
 mod tests {
     use dojo::model::ModelStorage;
-    use dojo_cairo_test::{
+    use dojo_foundry_test::{
         spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, WorldStorageTestTrait
     };
-    use super::{c1, m_M, M};
+    use super::M;
 
     #[test]
     fn test_1() {
         let ndef = NamespaceDef {
             namespace: "ns", resources: [
-                TestResource::Model(m_M::TEST_CLASS_HASH),
-                TestResource::Contract(c1::TEST_CLASS_HASH),
+                TestResource::Model("M"), TestResource::Contract("c1"),
             ].span()
         };
 

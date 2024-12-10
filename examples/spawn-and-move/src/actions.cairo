@@ -210,21 +210,21 @@ pub mod actions {
 mod tests {
     use dojo::model::{ModelStorage, ModelValueStorage, ModelStorageTest};
     use dojo::world::WorldStorageTrait;
-    use dojo_cairo_test::{
+    use dojo_foundry_test::{
         spawn_test_world, NamespaceDef, TestResource, ContractDefTrait, ContractDef,
         WorldStorageTestTrait
     };
 
-    use super::{actions, IActionsDispatcher, IActionsDispatcherTrait};
-    use dojo_examples::models::{Position, PositionValue, m_Position, Moves, m_Moves, Direction,};
+    use super::{IActionsDispatcher, IActionsDispatcherTrait};
+    use dojo_examples::models::{Position, PositionValue, Moves, Direction,};
 
     fn namespace_def() -> NamespaceDef {
         let ndef = NamespaceDef {
             namespace: "ns", resources: [
-                TestResource::Model(m_Position::TEST_CLASS_HASH),
-                TestResource::Model(m_Moves::TEST_CLASS_HASH),
-                TestResource::Event(actions::e_Moved::TEST_CLASS_HASH),
-                TestResource::Contract(actions::TEST_CLASS_HASH),
+                TestResource::Model("Position"),
+                TestResource::Model("Moves"),
+                TestResource::Event("Moved"),
+                TestResource::Contract("actions"),
             ].span()
         };
 
@@ -277,7 +277,7 @@ mod tests {
     #[test]
     #[available_gas(30000000)]
     fn test_move() {
-        let caller = starknet::contract_address_const::<0x0>();
+        let caller = snforge_std::test_address();
 
         let ndef = namespace_def();
         let mut world = spawn_test_world([ndef].span());

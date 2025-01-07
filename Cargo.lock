@@ -8358,7 +8358,9 @@ dependencies = [
  "lazy_static",
  "serde",
  "serde_json",
+ "similar-asserts",
  "starknet 0.12.0",
+ "tempfile",
  "url",
 ]
 

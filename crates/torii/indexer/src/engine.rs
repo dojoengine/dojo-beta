@@ -407,11 +407,11 @@ impl<P: Provider + Send + Sync + std::fmt::Debug + 'static> Engine<P> {
             keys: None,
         };
 
-        // Only fetch one chunk to find the first event
+        // Only fetch 1 event to find the first event block
         let events_page =
             self.provider.get_events(events_filter, None, 1).await?;
 
-        Ok(events_page.events.first().and_then(|e| e.block_number))
+        Ok(events_page.events.first().and_then(|e| e.block_number.map(|b| std::cmp::max(b-1, 0))))
     }
 
     async fn fetch_range(

@@ -324,27 +324,40 @@ impl<P: Provider + Send + Sync + std::fmt::Debug + 'static> Engine<P> {
     // TODO: since we now process blocks in chunks we can parallelize the fetching of data
     pub async fn fetch_data(&mut self, cursors: &Cursors) -> Result<FetchDataResult> {
         let latest_block = self.provider.block_hash_and_number().await?;
-        
-        let instant = Instant::now();
+
         let from = cursors.head.unwrap_or(self.config.world_block);
-        if from < latest_block.block_number {
+        let total_remaining_blocks = latest_block.block_number - from;
+        let blocks_to_process = total_remaining_blocks.min(self.config.blocks_chunk_size);
+        let to = from + blocks_to_process;
+
+        let instant = Instant::now();
+        let result = if from < latest_block.block_number {
             let from = if from == 0 { from } else { from + 1 };
-            info!(target: LOG_TARGET, from = %from, to = %latest_block.block_number, "Retrieving block events.");
-            let data = self.fetch_range(from, latest_block.block_number, &cursors.cursor_map).await?;
-            debug!(target: LOG_TARGET, duration = ?instant.elapsed(), from = %from, to = %latest_block.block_number, "Fetched data for range.");
-            Ok(FetchDataResult::Range(data))
+
+            info!(
+                target: LOG_TARGET,
+                from = %from,
+                to = %to,
+                "Retrieving block events."
+            );
+
+            let data = self.fetch_range(from, to, &cursors.cursor_map).await?;
+            debug!(target: LOG_TARGET, duration = ?instant.elapsed(), from = %from, to = %to, "Fetched data for range.");
+            FetchDataResult::Range(data)
         } else if self.config.flags.contains(IndexingFlags::PENDING_BLOCKS) {
-            info!(target: LOG_TARGET, latest_block_number = %latest_block.block_number, "Retrieving pending block.");
-            let data = self.fetch_pending(latest_block.clone(), cursors.last_pending_block_tx).await?;
+            let data =
+                self.fetch_pending(latest_block.clone(), cursors.last_pending_block_tx).await?;
             debug!(target: LOG_TARGET, duration = ?instant.elapsed(), latest_block_number = %latest_block.block_number, "Fetched pending data.");
-            Ok(if let Some(data) = data {
+            if let Some(data) = data {
                 FetchDataResult::Pending(data)
             } else {
                 FetchDataResult::None
-            })
+            }
         } else {
-            Ok(FetchDataResult::None)
-        }
+            FetchDataResult::None
+        };
+
+        Ok(result)
     }
 
     pub async fn fetch_range(
@@ -546,58 +559,45 @@ impl<P: Provider + Send + Sync + std::fmt::Debug + 'static> Engine<P> {
     }
 
     pub async fn process_range(&mut self, data: FetchRangeResult) -> Result<()> {
-        // Process transactions in chunks based on block numbers
+        // Process all transactions
         let mut processed_blocks = HashSet::new();
         let mut cursor_map = HashMap::new();
-        
-        let mut current_block = data.blocks.keys().next().copied().unwrap_or(0);
-        let end_block = data.blocks.keys().last().copied().unwrap_or(0);
+        for ((block_number, transaction_hash), events) in data.transactions {
+            debug!("Processing transaction hash: {:#x}", transaction_hash);
+            // Process transaction
+            let transaction = if self.config.flags.contains(IndexingFlags::TRANSACTIONS) {
+                Some(self.provider.get_transaction_by_hash(transaction_hash).await?)
+            } else {
+                None
+            };
 
-        while current_block <= end_block {
-            let chunk_end = (current_block + self.config.blocks_chunk_size - 1).min(end_block);
-            
-            // Process transactions for this chunk of blocks
-            for ((block_number, transaction_hash), events) in data.transactions.iter() {
-                if *block_number < current_block || *block_number > chunk_end {
-                    continue;
+            self.process_transaction_with_events(
+                transaction_hash,
+                events.as_slice(),
+                block_number,
+                data.blocks[&block_number],
+                transaction,
+                &mut cursor_map,
+            )
+            .await?;
+
+            // Process block
+            if !processed_blocks.contains(&block_number) {
+                if let Some(ref block_tx) = self.block_tx {
+                    block_tx.send(block_number).await?;
                 }
 
-                debug!("Processing transaction hash: {:#x}", transaction_hash);
-                // Process transaction
-                let transaction = if self.config.flags.contains(IndexingFlags::TRANSACTIONS) {
-                    Some(self.provider.get_transaction_by_hash(*transaction_hash).await?)
-                } else {
-                    None
-                };
-
-                self.process_transaction_with_events(
-                    *transaction_hash,
-                    events.as_slice(),
-                    *block_number,
-                    data.blocks[block_number],
-                    transaction,
-                    &mut cursor_map,
-                )
-                .await?;
-
-                // Process block
-                if !processed_blocks.contains(block_number) {
-                    if let Some(ref block_tx) = self.block_tx {
-                        block_tx.send(*block_number).await?;
-                    }
-
-                    self.process_block(*block_number, data.blocks[block_number]).await?;
-                    processed_blocks.insert(*block_number);
-                }
+                self.process_block(block_number, data.blocks[&block_number]).await?;
+                processed_blocks.insert(block_number);
             }
-
-            // Process parallelized events for this chunk
-            self.process_tasks().await?;
-
-            current_block = chunk_end + 1;
         }
 
-        let last_block_timestamp = get_block_timestamp(&self.provider, data.latest_block_number).await?;
+        // Process parallelized events
+        self.process_tasks().await?;
+
+        let last_block_timestamp =
+            get_block_timestamp(&self.provider, data.latest_block_number).await?;
+
         self.db.reset_cursors(data.latest_block_number, cursor_map, last_block_timestamp)?;
 
         Ok(())

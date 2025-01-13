@@ -384,10 +384,7 @@ impl<P: Provider + Send + Sync + std::fmt::Debug + 'static> Engine<P> {
                 let blocks_to_process = total_remaining.min(self.config.blocks_chunk_size);
                 let to = from + blocks_to_process;
 
-                ranges.insert(
-                    *contract_address,
-                    ContractRange { from, to },
-                );
+                ranges.insert(*contract_address, ContractRange { from, to });
             }
         }
 
@@ -408,10 +405,9 @@ impl<P: Provider + Send + Sync + std::fmt::Debug + 'static> Engine<P> {
         };
 
         // Only fetch 1 event to find the first event block
-        let events_page =
-            self.provider.get_events(events_filter, None, 1).await?;
+        let events_page = self.provider.get_events(events_filter, None, 1).await?;
 
-        Ok(events_page.events.first().and_then(|e| e.block_number.map(|b| std::cmp::max(b-1, 0))))
+        Ok(events_page.events.first().and_then(|e| e.block_number.map(|b| std::cmp::max(b - 1, 0))))
     }
 
     async fn fetch_range(
@@ -579,7 +575,7 @@ impl<P: Provider + Send + Sync + std::fmt::Debug + 'static> Engine<P> {
         // Process all transactions
         let mut processed_blocks = HashSet::new();
         let mut cursor_map = HashMap::new();
-        
+
         for ((block_number, transaction_hash), events) in data.transactions {
             debug!("Processing transaction hash: {:#x}", transaction_hash);
             // Process transaction

@@ -324,23 +324,17 @@ impl<P: Provider + Send + Sync + std::fmt::Debug + 'static> Engine<P> {
     // TODO: since we now process blocks in chunks we can parallelize the fetching of data
     pub async fn fetch_data(&mut self, cursors: &Cursors) -> Result<FetchDataResult> {
         let latest_block = self.provider.block_hash_and_number().await?;
-
-        info!(target: LOG_TARGET,
-            from = %cursors.head.unwrap_or(self.config.world_block),
-            to = %latest_block.block_number,
-            "Fetching data from {} to {}",
-            cursors.head.unwrap_or(self.config.world_block),
-            latest_block.block_number
-        );
-
+        
         let instant = Instant::now();
         let from = cursors.head.unwrap_or(self.config.world_block);
         if from < latest_block.block_number {
             let from = if from == 0 { from } else { from + 1 };
+            info!(target: LOG_TARGET, from = %from, to = %latest_block.block_number, "Retrieving block events.");
             let data = self.fetch_range(from, latest_block.block_number, &cursors.cursor_map).await?;
             debug!(target: LOG_TARGET, duration = ?instant.elapsed(), from = %from, to = %latest_block.block_number, "Fetched data for range.");
             Ok(FetchDataResult::Range(data))
         } else if self.config.flags.contains(IndexingFlags::PENDING_BLOCKS) {
+            info!(target: LOG_TARGET, latest_block_number = %latest_block.block_number, "Retrieving pending block.");
             let data = self.fetch_pending(latest_block.clone(), cursors.last_pending_block_tx).await?;
             debug!(target: LOG_TARGET, duration = ?instant.elapsed(), latest_block_number = %latest_block.block_number, "Fetched pending data.");
             Ok(if let Some(data) = data {

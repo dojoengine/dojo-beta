@@ -1,5 +1,10 @@
 use std::collections::HashMap;
 
+use regex::Regex;
+
+// Matches [*;(u32 or variable_name)]
+const FIXED_ARRAY_REGEX: &str = r"\[.+;\s*(\d{1,10}|([a-zA-Z_{1}][a-zA-Z0-9_]*))\s*\]";
+
 #[derive(Clone, Default, Debug)]
 pub struct TypeIntrospection(pub usize, pub Vec<usize>);
 
@@ -35,6 +40,11 @@ pub fn is_array(ty: &str) -> bool {
     ty.starts_with("Array<") || ty.starts_with("Span<")
 }
 
+pub fn is_fixed_array(ty: &str) -> bool {
+    let re = Regex::new(FIXED_ARRAY_REGEX).unwrap();
+    re.is_match(ty)
+}
+
 pub fn is_tuple(ty: &str) -> bool {
     ty.starts_with('(')
 }
@@ -45,6 +55,18 @@ pub fn get_array_item_type(ty: &str) -> String {
     } else {
         ty.trim().strip_prefix("Span<").unwrap().strip_suffix('>').unwrap().to_string()
     }
+}
+pub fn trim_first_and_last_chars(s: &str) -> &str {
+    let mut chars = s.trim().chars();
+    chars.next();
+    chars.next_back();
+    chars.as_str().trim()
+}
+
+pub fn get_fixed_array_inner_type_and_size(ty: &str) -> (String, String) {
+    let ty = trim_first_and_last_chars(ty);
+    let res: Vec<&str> = ty.rsplitn(2, ';').collect();
+    (res[1].trim().to_string(), res[0].trim().to_string())
 }
 
 /// split a tuple in array of items (nested tuples are not splitted).

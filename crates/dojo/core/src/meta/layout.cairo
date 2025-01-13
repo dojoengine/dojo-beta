@@ -6,6 +6,7 @@ pub struct FieldLayout {
     pub layout: Layout
 }
 
+
 #[derive(Copy, Drop, Serde, Debug, PartialEq)]
 pub enum Layout {
     Fixed: Span<u8>,
@@ -15,6 +16,7 @@ pub enum Layout {
     // And `Box` is not serializable. So using a Span, even if it's to have
     // one element, does the trick.
     Array: Span<Layout>,
+    FixedArray: Span<(Layout, u32)>,
     ByteArray,
     // there is one layout per variant.
     // the `selector` field identifies the variant
@@ -30,6 +32,7 @@ pub impl LayoutCompareImpl of LayoutCompareTrait {
             (Layout::Struct(_), Layout::Struct(_)) => true,
             (Layout::Tuple(_), Layout::Tuple(_)) => true,
             (Layout::Array(_), Layout::Array(_)) => true,
+            (Layout::FixedArray(_), Layout::FixedArray(_)) => true,
             (Layout::ByteArray, Layout::ByteArray) => true,
             (Layout::Enum(_), Layout::Enum(_)) => true,
             _ => false

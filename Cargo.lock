@@ -8350,7 +8350,7 @@ dependencies = [
 
 [[package]]
 name = "katana-chain-spec"
-version = "1.0.10"
+version = "1.0.12"
 dependencies = [
  "alloy-primitives",
  "anyhow",

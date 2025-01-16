@@ -8356,6 +8356,7 @@ dependencies = [
  "anyhow",
  "katana-primitives",
  "lazy_static",
+ "num-traits 0.2.19",
  "serde",
  "serde_json",
  "similar-asserts",
@@ -8487,6 +8488,7 @@ version = "1.0.12"
 dependencies = [
  "alloy-primitives",
  "anyhow",
+ "auto_impl",
  "blockifier",
  "criterion",
  "katana-cairo",

@@ -16,6 +16,7 @@ starknet = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing.workspace = true
 
+auto_impl = "1.2.0"
 blockifier = { git = "https://github.com/dojoengine/sequencer", tag = "v0.8.0-rc3.2", features = [ "testing" ], optional = true }
 katana-cairo = { workspace = true, optional = true }
 

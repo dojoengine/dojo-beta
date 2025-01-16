@@ -1,4 +1,3 @@
-use core::panic;
 use std::cell::{OnceCell, RefCell};
 use std::fs::File;
 use std::io::BufReader;

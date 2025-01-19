@@ -35,8 +35,119 @@ pub struct Member {
     pub ty: Ty,
 }
 
-#[generate_trait]
-pub impl StructCompareImpl of StructCompareTrait {
+pub trait TyCompareTrait<T> {
+    fn is_an_upgrade_of(self: @T, old: @T) -> bool;
+}
+
+impl PrimitiveCompareImpl of TyCompareTrait<felt252> {
+    fn is_an_upgrade_of(self: @felt252, old: @felt252) -> bool {
+        if self == old {
+            return true;
+        }
+
+        let mut allowed_upgrades: Span<(felt252, Span<felt252>)> = [
+            ('bool', [].span()), ('u8', ['u16', 'u32', 'usize', 'u64', 'u128', 'felt252'].span()),
+            ('u16', ['u32', 'usize', 'u64', 'u128', 'felt252'].span()),
+            ('u32', ['usize', 'u64', 'u128', 'felt252'].span()),
+            ('usize', ['u32', 'u64', 'u128', 'felt252'].span()),
+            ('u64', ['u128', 'felt252'].span()), ('u128', ['felt252'].span()), ('u256', [].span()),
+            ('i8', ['i16', 'i32', 'i64', 'i128', 'felt252'].span()),
+            ('i16', ['i32', 'i64', 'i128', 'felt252'].span()),
+            ('i32', ['i64', 'i128', 'felt252'].span()), ('i64', ['i128', 'felt252'].span()),
+            ('i128', ['felt252'].span()), ('felt252', ['ClassHash', 'ContractAddress'].span()),
+            ('ClassHash', ['felt252', 'ContractAddress'].span()),
+            ('ContractAddress', ['felt252', 'ClassHash'].span()),
+        ]
+            .span();
+
+        loop {
+            match allowed_upgrades.pop_front() {
+                Option::Some((
+                    src, allowed,
+                )) => {
+                    if src == old {
+                        let mut i = 0;
+                        break loop {
+                            if i >= (*allowed).len() {
+                                break false;
+                            }
+                            if (*allowed).at(i) == self {
+                                break true;
+                            }
+                            i += 1;
+                        };
+                    }
+                },
+                Option::None => { break false; },
+            }
+        }
+    }
+}
+
+impl TyCompareImpl of TyCompareTrait<Ty> {
+    fn is_an_upgrade_of(self: @Ty, old: @Ty) -> bool {
+        match (self, old) {
+            (Ty::Primitive(n), Ty::Primitive(o)) => n.is_an_upgrade_of(o),
+            (Ty::Struct(n), Ty::Struct(o)) => n.is_an_upgrade_of(o),
+            (Ty::Array(n), Ty::Array(o)) => { (*n).at(0).is_an_upgrade_of((*o).at(0)) },
+            (
+                Ty::Tuple(n), Ty::Tuple(o),
+            ) => {
+                let n = *n;
+                let o = *o;
+
+                if n.len() != o.len() {
+                    return false;
+                }
+
+                let mut i = 0;
+                loop {
+                    if i >= n.len() {
+                        break true;
+                    }
+                    if !n.at(i).is_an_upgrade_of(o.at(i)) {
+                        break false;
+                    }
+                    i += 1;
+                }
+            },
+            (Ty::ByteArray, Ty::ByteArray) => true,
+            (Ty::Enum(n), Ty::Enum(o)) => n.is_an_upgrade_of(o),
+            _ => false,
+        }
+    }
+}
+
+impl EnumCompareImpl of TyCompareTrait<Enum> {
+    fn is_an_upgrade_of(self: @Enum, old: @Enum) -> bool {
+        if self.name != old.name
+            || self.attrs != old.attrs
+            || (*self.children).len() < (*old.children).len() {
+            return false;
+        }
+
+        let mut i = 0;
+
+        loop {
+            if i >= (*old.children).len() {
+                break true;
+            }
+
+            let (_, old_ty) = *old.children[i];
+            let (_, new_ty) = *self.children[i];
+
+            // changing name is acceptable as it has no impact on storage
+
+            if !new_ty.is_an_upgrade_of(@old_ty) {
+                break false;
+            }
+
+            i += 1;
+        }
+    }
+}
+
+impl StructCompareImpl of TyCompareTrait<Struct> {
     fn is_an_upgrade_of(self: @Struct, old: @Struct) -> bool {
         if self.name != old.name
             || self.attrs != old.attrs
@@ -51,12 +162,18 @@ pub impl StructCompareImpl of StructCompareTrait {
                 break true;
             }
 
-            if *old.children[i] != *self.children[i] {
+            if !self.children[i].is_an_upgrade_of(old.children[i]) {
                 break false;
             }
 
             i += 1;
         }
+    }
+}
+
+impl MemberCompareImpl of TyCompareTrait<Member> {
+    fn is_an_upgrade_of(self: @Member, old: @Member) -> bool {
+        self.name == old.name && self.attrs == old.attrs && self.ty.is_an_upgrade_of(old.ty)
     }
 }
 

@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::{Args, Subcommand};
+use dojo_world::config::calldata_decoder;
 use scarb::core::Config;
 use sozo_ops::model;
 use sozo_ops::resource_descriptor::ResourceDescriptor;
@@ -109,7 +110,9 @@ hashes, called 'hash' in the following documentation.
 
         #[arg(value_name = "KEYS")]
         #[arg(value_delimiter = ',')]
-        #[arg(help = "Comma seperated values e.g., 0x12345,0x69420,...")]
+        #[arg(help = "Comma separated values e.g., 0x12345,0x69420,sstr:\"hello\". Supported \
+                      prefixes:\n  - sstr: A cairo short string\n  - no prefix: A cairo felt")]
+        #[arg(value_parser = model_key_parser)]
         keys: Vec<Felt>,
 
         #[command(flatten)]
@@ -122,6 +125,18 @@ hashes, called 'hash' in the following documentation.
         #[arg(help = "Block number at which to retrieve the model data (pending block by default)")]
         block: Option<u64>,
     },
+}
+
+// Custom parser for model keys
+fn model_key_parser(s: &str) -> Result<Felt> {
+    if s.contains(':') && !s.starts_with("sstr:") {
+        anyhow::bail!("Only 'sstr:' prefix is supported for model keys");
+    }
+    let felts = calldata_decoder::decode_calldata(s)?;
+    if felts.is_empty() {
+        anyhow::bail!("Failed to parse key '{}': no values returned.", s);
+    }
+    Ok(felts[0])
 }
 
 impl ModelArgs {
@@ -220,5 +235,69 @@ impl ModelArgs {
                 }
             }
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+    use starknet::core::utils::cairo_short_string_to_felt;
+
+    use super::*;
+
+    #[derive(Parser, Debug)]
+    struct TestCommand {
+        #[command(subcommand)]
+        command: ModelCommand,
+    }
+
+    #[test]
+    fn test_model_get_argument_parsing() {
+        // Test parsing with hex
+        let args = TestCommand::parse_from([
+            "model",
+            "get",
+            "Account",
+            "0x054cb935d86d80b5a0a6e756edf448ab33876d01dd2b07a2a4e63a41e06d0ef5,0x6d69737479",
+        ]);
+
+        if let ModelCommand::Get { keys, .. } = args.command {
+            let expected = vec![
+                Felt::from_hex(
+                    "0x054cb935d86d80b5a0a6e756edf448ab33876d01dd2b07a2a4e63a41e06d0ef5",
+                )
+                .unwrap(),
+                Felt::from_hex("0x6d69737479").unwrap(),
+            ];
+            assert_eq!(keys, expected);
+        } else {
+            panic!("Expected Get command");
+        }
+
+        // Test parsing with string prefix
+        let args = TestCommand::parse_from([
+            "model",
+            "get",
+            "Account",
+            "0x054cb935d86d80b5a0a6e756edf448ab33876d01dd2b07a2a4e63a41e06d0ef5,sstr:\"misty\"",
+        ]);
+
+        if let ModelCommand::Get { keys, .. } = args.command {
+            let expected = vec![
+                Felt::from_hex(
+                    "0x054cb935d86d80b5a0a6e756edf448ab33876d01dd2b07a2a4e63a41e06d0ef5",
+                )
+                .unwrap(),
+                cairo_short_string_to_felt("misty").unwrap(),
+            ];
+            assert_eq!(keys, expected);
+        } else {
+            panic!("Expected Get command");
+        }
+
+        // Test invalid prefix
+        let result =
+            TestCommand::try_parse_from(["model", "get", "Account", "0x123,str:\"hello\""]);
+        assert!(result.is_err());
     }
 }

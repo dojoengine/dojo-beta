@@ -1,3 +1,4 @@
+use rayon::prelude::*;
 use std::sync::Arc;
 
 use gas_oracle::L1GasOracle;
@@ -220,11 +221,26 @@ impl<'a, P: TrieWriter> UncommittedBlock<'a, P> {
         let transaction_count = self.transactions.len() as u32;
         let state_diff_length = self.state_updates.len() as u32;
 
-        let state_root = self.compute_new_state_root();
-        let transactions_commitment = self.compute_transaction_commitment();
-        let events_commitment = self.compute_event_commitment();
-        let receipts_commitment = self.compute_receipt_commitment();
-        let state_diff_commitment = self.compute_state_diff_commitment();
+        /* optimisation 1
+               let state_root = self.compute_new_state_root();
+               let transactions_commitment = self.compute_transaction_commitment();
+               let events_commitment = self.compute_event_commitment();
+               let receipts_commitment = self.compute_receipt_commitment();
+               let state_diff_commitment = self.compute_state_diff_commitment();
+        */
+        let mut state_root = Felt::default();
+        let mut transactions_commitment = Felt::default();
+        let mut events_commitment = Felt::default();
+        let mut receipts_commitment = Felt::default();
+        let mut state_diff_commitment = Felt::default();
+
+        rayon::scope(|s| {
+            s.spawn(|_| state_root = self.compute_new_state_root());
+            s.spawn(|_| transactions_commitment = self.compute_transaction_commitment());
+            s.spawn(|_| events_commitment = self.compute_event_commitment());
+            s.spawn(|_| receipts_commitment = self.compute_receipt_commitment());
+            s.spawn(|_| state_diff_commitment = self.compute_state_diff_commitment());
+        });
 
         let header = Header {
             state_root,
@@ -256,7 +272,11 @@ impl<'a, P: TrieWriter> UncommittedBlock<'a, P> {
     }
 
     fn compute_receipt_commitment(&self) -> Felt {
-        let receipt_hashes = self.receipts.iter().map(|r| r.compute_hash()).collect::<Vec<Felt>>();
+        /* optimisation 2
+               let receipt_hashes = self.receipts.iter().map(|r| r.compute_hash()).collect::<Vec<Felt>>();
+        */
+        let receipt_hashes =
+            self.receipts.par_iter().map(|r| r.compute_hash()).collect::<Vec<Felt>>();
         compute_merkle_root::<hash::Poseidon>(&receipt_hashes).unwrap()
     }
 
@@ -275,12 +295,18 @@ impl<'a, P: TrieWriter> UncommittedBlock<'a, P> {
         // the iterator will yield all events from all the receipts, each one paired with the
         // transaction hash that emitted it: (tx hash, event).
         let events = self.receipts.iter().flat_map(|r| r.events().iter().map(|e| (r.tx_hash, e)));
-
-        let mut hashes = Vec::new();
-        for (tx, event) in events {
-            let event_hash = event_hash(tx, event);
-            hashes.push(event_hash);
-        }
+        /* optimisation 3
+               let mut hashes = Vec::new();
+               for (tx, event) in events {
+                   let event_hash = event_hash(tx, event);
+                   hashes.push(event_hash);
+               }
+        */
+        let hashes = events
+            .par_bridge()
+            .into_par_iter()
+            .map(|(tx, event)| event_hash(tx, event))
+            .collect::<Vec<_>>();
 
         // compute events commitment
         compute_merkle_root::<hash::Poseidon>(&hashes).unwrap()
